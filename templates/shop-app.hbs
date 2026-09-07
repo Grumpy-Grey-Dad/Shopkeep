@@ -78,9 +78,114 @@
   </section>
   {{/if}}
 
+  {{#if visibleServices.length}}
+  <section class="vs-services">
+    <h3>Services</h3>
+    <table>
+      <tbody>
+        {{#each visibleServices}}
+        <tr>
+          <td>{{this.name}}{{#if this.needsApproval}} <span class="vs-hint">(needs GM approval)</span>{{/if}}</td>
+          <td>{{this.cost}} gp</td>
+          <td><button type="button" data-action="useService" data-service-id="{{this.id}}">Use</button></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if canManage}}
+  {{#if pendingRequests.length}}
+  <section class="vs-pending">
+    <h3>Pending Requests</h3>
+    <table>
+      <tbody>
+        {{#each pendingRequests}}
+        <tr>
+          <td>{{this.actorName}} — {{this.serviceName}} ({{this.cost}} gp)</td>
+          <td>
+            <button type="button" data-action="approveRequest" data-request-id="{{this.id}}">Approve</button>
+            <button type="button" data-action="denyRequest" data-request-id="{{this.id}}">Deny</button>
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if pendingOrders.length}}
+  <section class="vs-pending">
+    <h3>Pending Orders</h3>
+    <table>
+      <tbody>
+        {{#each pendingOrders}}
+        <tr>
+          <td>{{this.actorName}} — {{this.serviceName}} ({{this.leadTimeDays}} day(s))</td>
+          <td><button type="button" data-action="fulfillOrder" data-order-id="{{this.id}}">Mark Fulfilled</button></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+  {{/if}}
+
   {{#if canManage}}
   <section class="vs-config">
     <h3>Configuration</h3>
+
+    <fieldset>
+      <legend>Shop Type &amp; Services</legend>
+      <label>Shop Type
+        <select name="shopType">
+          <option value="">-- none / custom --</option>
+          {{#each shopTypes}}
+          <option value="{{this}}" {{#if (eq this ../config.shopType)}}selected{{/if}}>{{this}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label class="vs-check"><input type="checkbox" name="typeLock" {{#if config.typeLock}}checked{{/if}}> Lock this shop to its type's service list</label>
+      <p><button type="button" data-action="loadSuggestedServices">Load Suggested Services for Type</button></p>
+
+      <table class="vs-service-editor">
+        <thead>
+          <tr><th>On</th><th>Name</th><th>Type</th><th>Cost</th><th>DC</th><th>Lead (days)</th><th>Tables</th><th>Flag</th><th></th></tr>
+        </thead>
+        <tbody>
+          {{#each services}}
+          <tr>
+            <td><input type="checkbox" data-service-field="enabled" data-service-id="{{this.id}}" {{#if this.enabled}}checked{{/if}}></td>
+            <td><input type="text" data-service-field="name" data-service-id="{{this.id}}" value="{{this.name}}"></td>
+            <td>
+              <select data-service-field="resolutionType" data-service-id="{{this.id}}">
+                <option value="instant" {{#if (eq this.resolutionType "instant")}}selected{{/if}}>Instant</option>
+                <option value="roll" {{#if (eq this.resolutionType "roll")}}selected{{/if}}>Roll</option>
+                <option value="time-delay" {{#if (eq this.resolutionType "time-delay")}}selected{{/if}}>Time-Delay</option>
+                <option value="rolltable" {{#if (eq this.resolutionType "rolltable")}}selected{{/if}}>Roll Table</option>
+              </select>
+            </td>
+            <td><input type="number" data-service-field="cost" data-service-id="{{this.id}}" value="{{this.cost}}" style="width:4em"></td>
+            <td><input type="number" data-service-field="dc" data-service-id="{{this.id}}" value="{{this.dc}}" style="width:3em"></td>
+            <td><input type="number" data-service-field="leadTimeDays" data-service-id="{{this.id}}" value="{{this.leadTimeDays}}" style="width:3em"></td>
+            <td>
+              <select multiple data-service-field="rollTableIds" data-service-id="{{this.id}}" style="min-width:8em">
+                {{#each ../worldTables}}
+                <option value="{{this.id}}" {{#if (includes ../rollTableIds this.id)}}selected{{/if}}>{{this.name}}</option>
+                {{/each}}
+              </select>
+            </td>
+            <td><input type="checkbox" data-service-field="alwaysFlag" data-service-id="{{this.id}}" {{#if this.alwaysFlag}}checked{{/if}}></td>
+            <td><button type="button" data-action="removeService" data-service-id="{{this.id}}">Remove</button></td>
+          </tr>
+          {{else}}
+          <tr><td colspan="9"><em>No services yet.</em></td></tr>
+          {{/each}}
+        </tbody>
+      </table>
+      <button type="button" data-action="addService">Add Service</button>
+    </fieldset>
 
     <fieldset>
       <legend>Source Compendiums</legend>

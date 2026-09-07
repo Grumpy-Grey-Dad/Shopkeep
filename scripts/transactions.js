@@ -7,11 +7,11 @@ import { priceInGp } from "./restock.js";
  * available funds are read from system.currency.gp only — copper/silver/
  * platinum on the buyer's sheet are not consolidated or spent.
  */
-function buyerGp(actor) {
+export function buyerGp(actor) {
   return actor?.system?.currency?.gp ?? 0;
 }
 
-async function setBuyerGp(actor, gp) {
+export async function setBuyerGp(actor, gp) {
   return actor.update({ "system.currency.gp": Math.max(0, Math.round(gp)) });
 }
 
