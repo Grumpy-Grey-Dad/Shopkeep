@@ -15,6 +15,14 @@ async function setBuyerGp(actor, gp) {
   return actor.update({ "system.currency.gp": Math.max(0, Math.round(gp)) });
 }
 
+/** What the shop actually pays for a player-sold item — shared by the
+ *  transaction and by the UI, so the displayed price can never drift from
+ *  what clicking Sell actually pays out. */
+export function sellPayout(item, quantity, config) {
+  const percent = config.sellBackPercent ?? 50;
+  return Math.floor((priceInGp(item) * quantity * percent) / 100);
+}
+
 export async function buyItem(shopActor, buyerActor, itemId, quantity = 1) {
   const item = shopActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item no longer in stock." };
@@ -59,8 +67,7 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1) {
   // D&D norm: shops pay a fraction of listed value buying from players.
   // Not in the original spec — added here as a sensible default, flagged
   // as an open tuning value (sellBackPercent, defaults 50).
-  const percent = config.sellBackPercent ?? 50;
-  const payout = Math.floor((priceInGp(item) * quantity * percent) / 100);
+  const payout = sellPayout(item, quantity, config);
 
   if (getShopGold(shopActor) < payout) {
     return { ok: false, message: "This shop can't afford to buy that right now." };

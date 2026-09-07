@@ -1,7 +1,7 @@
 import { MODULE_ID } from "./constants.js";
 import { getShopConfig, setShopConfig, getShopGold, enableShop } from "./shop-data.js";
 import { restockShop, addManualItem, priceInGp } from "./restock.js";
-import { buyItem, sellItem } from "./transactions.js";
+import { buyItem, sellItem, sellPayout } from "./transactions.js";
 
 const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 const { DragDrop, TextEditor } = foundry.applications.ux;
@@ -110,7 +110,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
             id: i.id,
             name: i.name,
             img: i.img,
-            price: priceInGp(i),
+            price: sellPayout(i, 1, config),
             quantity: i.system.quantity ?? 1
           });
         }
