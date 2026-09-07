@@ -1,4 +1,4 @@
-.vs-shop { display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem; }
+.vs-shop { display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem; overflow-y: auto; max-height: 100%; }
 .vs-summary { display: flex; align-items: center; gap: 0.75rem; }
 .vs-summary img { border-radius: 4px; }
 .vs-summary-text { flex: 1; }
@@ -9,6 +9,7 @@
 .vs-shop table { width: 100%; border-collapse: collapse; }
 .vs-shop table td, .vs-shop table th { padding: 2px 4px; text-align: left; }
 .vs-shop fieldset { margin-bottom: 0.5rem; }
+.vs-config fieldset:first-of-type { max-height: 180px; overflow-y: auto; }
 .vs-check { display: inline-block; margin-right: 0.75rem; }
 .vs-config label { display: block; margin-bottom: 0.35rem; }
 .vs-config input[type="text"], .vs-config input[type="number"] { width: 100%; }
