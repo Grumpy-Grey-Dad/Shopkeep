@@ -1,7 +1,7 @@
 {{#unless config.enabled}}
 <div class="vs-enable">
   <p>This actor is not yet configured as a shop.</p>
-  {{#if isGM}}
+  {{#if canManage}}
   <button type="button" data-action="enable">Make this a Shop</button>
   {{/if}}
 </div>
@@ -14,12 +14,13 @@
       <h2>{{actor.name}}</h2>
       <p>Gold: {{gold}} gp</p>
     </div>
-    {{#if isGM}}
+    {{#if canManage}}
     <button type="button" data-action="restock">Restock</button>
     {{/if}}
   </header>
 
   <section class="vs-acting">
+    {{#if canManage}}
     <label>Acting as:
       <select name="actingActor">
         <option value="">-- choose a character --</option>
@@ -28,12 +29,17 @@
         {{/each}}
       </select>
     </label>
+    {{else if actingActor}}
+    <p>Playing as: <strong>{{actingActor.name}}</strong></p>
+    {{else}}
+    <p class="vs-hint">You don't have a character assigned — ask your GM to set one in Player Configuration.</p>
+    {{/if}}
   </section>
 
   <section class="vs-stock vs-drop-zone">
-    <h3>Stock {{#if isGM}}<span class="vs-hint">(GM: drag an item here to add it manually)</span>{{/if}}</h3>
+    <h3>Stock {{#if canManage}}<span class="vs-hint">(GM: drag an item here to add it manually)</span>{{/if}}</h3>
     <table>
-      <thead><tr><th></th><th>Name</th><th>Price</th><th>Qty</th><th>Origin</th><th></th></tr></thead>
+      <thead><tr><th></th><th>Name</th><th>Price</th><th>Qty</th>{{#if canManage}}<th>Origin</th>{{/if}}<th></th></tr></thead>
       <tbody>
         {{#each stock}}
         <tr>
@@ -41,14 +47,14 @@
           <td>{{this.name}} {{#if this.rarity}}<em>({{this.rarity}})</em>{{/if}}</td>
           <td>{{this.price}} gp</td>
           <td>{{this.quantity}}</td>
-          <td>{{this.origin}}</td>
+          {{#if ../canManage}}<td>{{this.origin}}</td>{{/if}}
           <td>
             <button type="button" data-action="buy" data-item-id="{{this.id}}">Buy</button>
-            {{#if ../isGM}}<button type="button" data-action="removeItem" data-item-id="{{this.id}}">Remove</button>{{/if}}
+            {{#if ../canManage}}<button type="button" data-action="removeItem" data-item-id="{{this.id}}">Remove</button>{{/if}}
           </td>
         </tr>
         {{else}}
-        <tr><td colspan="6"><em>No stock yet — configure and restock below.</em></td></tr>
+        <tr><td colspan="6"><em>No stock yet{{#if ../canManage}} — configure and restock below{{/if}}.</em></td></tr>
         {{/each}}
       </tbody>
     </table>
@@ -72,14 +78,14 @@
   </section>
   {{/if}}
 
-  {{#if isGM}}
+  {{#if canManage}}
   <section class="vs-config">
     <h3>Configuration</h3>
 
     <fieldset>
       <legend>Source Compendiums</legend>
       {{#each packs}}
-      <label class="vs-check"><input type="checkbox" name="compendiums" value="{{this.id}}" {{#if this.checked}}checked{{/if}}> {{this.label}}</label>
+      <label class="vs-check"><input type="checkbox" name="compendiums" value="{{this.id}}" {{#if this.checked}}checked{{/if}}> {{this.label}} <span class="vs-hint">— {{this.source}}</span></label>
       {{/each}}
     </fieldset>
 
