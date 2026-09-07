@@ -29,7 +29,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     this.actingActorId = game.user.character?.id ?? null;
     this.#dragDrop = new DragDrop.implementation({
       dropSelector: ".vs-drop-zone",
-      permissions: { drop: () => this.isEditable },
+      permissions: { drop: () => game.user.isGM },
       callbacks: { drop: this._onDropItem.bind(this) }
     });
   }
@@ -73,7 +73,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
   async _prepareContext(_options) {
     const config = getShopConfig(this.actor);
-    const canManage = this.isEditable;
+    // GM-only, deliberately not tied to this.isEditable: players need
+    // Owner permission on the shop actor for buy/sell writes to go
+    // through at all under Foundry's own permission rules, so "has Owner"
+    // can't double as "should see the management console" or every buyer
+    // would get GM controls the moment they're able to transact.
+    const canManage = game.user.isGM;
 
     const stock = this.actor.items.contents
       .map((i) => ({
@@ -127,7 +132,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
           .sort((a, b) => a.source.localeCompare(b.source) || a.label.localeCompare(b.label))
       : [];
 
-    const playerActors = canManage ? game.actors.filter((a) => a.hasPlayerOwner) : [];
+    // Only real PCs, never the shop itself or any other NPC that happens
+    // to have player-facing permission (the shop has to, for players to
+    // open it at all — that doesn't make it something to "act as").
+    const playerActors = canManage
+      ? game.actors.filter((a) => a.hasPlayerOwner && a.type === "character")
+      : [];
 
     return {
       actor: this.actor,
@@ -146,7 +156,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
   }
 
   async _onDropItem(event) {
-    if (!this.isEditable) return;
+    if (!game.user.isGM) return;
     const data = TextEditor.implementation.getDragEventData(event);
     if (data?.type !== "Item") return;
     const item = await fromUuid(data.uuid);
@@ -157,13 +167,13 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
   }
 
   static async #onEnable() {
-    if (!this.isEditable) return;
+    if (!game.user.isGM) return;
     await enableShop(this.actor);
     this.render();
   }
 
   static async #onRestock() {
-    if (!this.isEditable) return;
+    if (!game.user.isGM) return;
     const result = await restockShop(this.actor);
     ChatMessage.create({
       speaker: { alias: this.actor.name },
@@ -181,7 +191,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     const buyer = this.actingActorId ? game.actors.get(this.actingActorId) : null;
     if (!buyer) {
       return ui.notifications.warn(
-        this.isEditable
+        game.user.isGM
           ? "Pick an acting character first."
           : "You don't have a character assigned — ask your GM to set one in Player Configuration."
       );
@@ -196,7 +206,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     const seller = this.actingActorId ? game.actors.get(this.actingActorId) : null;
     if (!seller) {
       return ui.notifications.warn(
-        this.isEditable
+        game.user.isGM
           ? "Pick an acting character first."
           : "You don't have a character assigned — ask your GM to set one in Player Configuration."
       );
@@ -207,14 +217,14 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
   }
 
   static async #onRemoveItem(_event, target) {
-    if (!this.isEditable) return;
+    if (!game.user.isGM) return;
     const itemId = target.dataset.itemId;
     await this.actor.items.get(itemId)?.delete();
     this.render();
   }
 
   static async #onSaveConfig(event) {
-    if (!this.isEditable) return;
+    if (!game.user.isGM) return;
     event.preventDefault();
     const form = this.element;
 
