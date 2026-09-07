@@ -1,0 +1,122 @@
+{{#unless config.enabled}}
+<div class="vs-enable">
+  <p>This actor is not yet configured as a shop.</p>
+  {{#if isGM}}
+  <button type="button" data-action="enable">Make this a Shop</button>
+  {{/if}}
+</div>
+{{else}}
+<div class="vs-shop">
+
+  <header class="vs-summary">
+    <img src="{{actor.img}}" width="48" height="48">
+    <div class="vs-summary-text">
+      <h2>{{actor.name}}</h2>
+      <p>Gold: {{gold}} gp</p>
+    </div>
+    {{#if isGM}}
+    <button type="button" data-action="restock">Restock</button>
+    {{/if}}
+  </header>
+
+  <section class="vs-acting">
+    <label>Acting as:
+      <select name="actingActor">
+        <option value="">-- choose a character --</option>
+        {{#each playerActors}}
+        <option value="{{this.id}}" {{#if (eq this.id ../actingActorId)}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
+    </label>
+  </section>
+
+  <section class="vs-stock vs-drop-zone">
+    <h3>Stock {{#if isGM}}<span class="vs-hint">(GM: drag an item here to add it manually)</span>{{/if}}</h3>
+    <table>
+      <thead><tr><th></th><th>Name</th><th>Price</th><th>Qty</th><th>Origin</th><th></th></tr></thead>
+      <tbody>
+        {{#each stock}}
+        <tr>
+          <td><img src="{{this.img}}" width="24" height="24"></td>
+          <td>{{this.name}} {{#if this.rarity}}<em>({{this.rarity}})</em>{{/if}}</td>
+          <td>{{this.price}} gp</td>
+          <td>{{this.quantity}}</td>
+          <td>{{this.origin}}</td>
+          <td>
+            <button type="button" data-action="buy" data-item-id="{{this.id}}">Buy</button>
+            {{#if ../isGM}}<button type="button" data-action="removeItem" data-item-id="{{this.id}}">Remove</button>{{/if}}
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6"><em>No stock yet — configure and restock below.</em></td></tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+
+  {{#if sellable.length}}
+  <section class="vs-sell">
+    <h3>Sell to this Shop</h3>
+    <table>
+      <tbody>
+        {{#each sellable}}
+        <tr>
+          <td><img src="{{this.img}}" width="24" height="24"></td>
+          <td>{{this.name}}</td>
+          <td>{{this.price}} gp</td>
+          <td><button type="button" data-action="sell" data-item-id="{{this.id}}">Sell</button></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if isGM}}
+  <section class="vs-config">
+    <h3>Configuration</h3>
+
+    <fieldset>
+      <legend>Source Compendiums</legend>
+      {{#each packs}}
+      <label class="vs-check"><input type="checkbox" name="compendiums" value="{{this.id}}" {{#if this.checked}}checked{{/if}}> {{this.label}}</label>
+      {{/each}}
+    </fieldset>
+
+    <fieldset>
+      <legend>Filters</legend>
+      <p><strong>Item Types</strong><br>
+        {{#each itemTypes}}
+        <label class="vs-check"><input type="checkbox" name="filterTypes" value="{{this}}" {{#if (includes ../config.filters.types this)}}checked{{/if}}> {{this}}</label>
+        {{/each}}
+      </p>
+      <p><strong>Rarities</strong><br>
+        {{#each rarities}}
+        <label class="vs-check"><input type="checkbox" name="filterRarities" value="{{this}}" {{#if (includes ../config.filters.rarities this)}}checked{{/if}}> {{this}}</label>
+        {{/each}}
+      </p>
+      <label>Include keywords (comma-separated)<input type="text" name="includeKeywords" value="{{config.filters.includeKeywords}}"></label>
+      <label>Exclude keywords (comma-separated)<input type="text" name="excludeKeywords" value="{{config.filters.excludeKeywords}}"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Economy</legend>
+      <label>Starting Gold (gp)<input type="number" name="startingGold" value="{{config.startingGold}}"></label>
+      <label>Target Stock Count<input type="number" name="targetStockCount" value="{{config.targetStockCount}}"></label>
+      <label>Max Qty per Item<input type="number" name="maxQuantityPerItem" value="{{config.maxQuantityPerItem}}"></label>
+      <label>Sell-back % (what the shop pays for player-sold goods)<input type="number" name="sellBackPercent" value="{{config.sellBackPercent}}"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Buy List (item types this shop purchases from players)</legend>
+      {{#each itemTypes}}
+      <label class="vs-check"><input type="checkbox" name="buyList" value="{{this}}" {{#if (includes ../config.buyList this)}}checked{{/if}}> {{this}}</label>
+      {{/each}}
+    </fieldset>
+
+    <button type="button" data-action="saveConfig">Save Configuration</button>
+  </section>
+  {{/if}}
+
+</div>
+{{/unless}}
