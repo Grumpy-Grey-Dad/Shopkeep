@@ -211,6 +211,15 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
           : "You don't have a character assigned — ask your GM to set one in Player Configuration."
       );
     }
+    const item = seller.items.get(itemId);
+    if (item?.system.equipped) {
+      const confirmed = await foundry.applications.api.DialogV2.confirm({
+        window: { title: "Sell Equipped Item?" },
+        content: `<p><strong>${item.name}</strong> is currently equipped. Sell it anyway?</p>`
+      });
+      if (!confirmed) return;
+    }
+
     const result = await sellItem(this.actor, seller, itemId, 1);
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
