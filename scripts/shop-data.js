@@ -103,5 +103,10 @@ export async function recordHaggleAttempt(actor, playerActorId) {
 }
 
 export async function resetHaggleAttempts(actor) {
-  return actor.setFlag(MODULE_ID, "haggleAttempts", {});
+  // setFlag(..., {}) would NOT clear this — Foundry deep-merges plain
+  // object flag values by default, so merging {} onto an existing map
+  // changes nothing (unlike the pendingRequests/pendingOrders arrays
+  // elsewhere in this file, which Foundry always replaces wholesale).
+  // unsetFlag actually removes the stored value entirely.
+  return actor.unsetFlag(MODULE_ID, "haggleAttempts");
 }

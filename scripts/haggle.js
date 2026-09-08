@@ -53,9 +53,11 @@ async function performHaggle(shopActor, actorActor, item, direction, config) {
     return { ok: true, message: `Haggle failed (rolled ${roll.total} vs DC ${dc}) — no discount.` };
   }
 
+  // false = don't also award the ordinary per-purchase standing bump;
+  // the haggle success/repeat deltas above already cover this transaction.
   const result =
     direction === "buy"
-      ? await buyItem(shopActor, actorActor, item.id, 1, config.haggleDiscountPercent)
+      ? await buyItem(shopActor, actorActor, item.id, 1, config.haggleDiscountPercent, false)
       : await sellItem(shopActor, actorActor, item.id, 1, config.haggleDiscountPercent);
 
   const verb = direction === "buy" ? "off" : "extra";

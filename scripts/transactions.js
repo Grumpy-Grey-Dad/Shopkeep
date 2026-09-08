@@ -10,7 +10,7 @@ export function sellPayoutCopper(item, quantity, config) {
   return Math.round((itemCostCopper(item) * quantity * percent) / 100);
 }
 
-export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, discountPercent = 0) {
+export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, discountPercent = 0, awardPurchaseStanding = true) {
   const item = shopActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item no longer in stock." };
 
@@ -38,8 +38,14 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, disco
 
   // Flat per-transaction bump, not scaled by quantity — this rewards
   // being a repeat customer (the spec's own framing), not bulk-buying.
-  const config = getShopConfig(shopActor);
-  await adjustStanding(shopActor, buyerActor.id, config.standingPerPurchase);
+  // Suppressed for a haggle-driven purchase (awardPurchaseStanding=false)
+  // — haggling already applies its own success/repeat standing deltas,
+  // and a purchase that only happened because of a successful haggle
+  // shouldn't also collect the ordinary customer bonus on top of that.
+  if (awardPurchaseStanding) {
+    const config = getShopConfig(shopActor);
+    await adjustStanding(shopActor, buyerActor.id, config.standingPerPurchase);
+  }
 
   return { ok: true, message: `${buyerActor.name} bought ${quantity}x ${item.name} for ${copperToDisplay(cost)}.` };
 }
