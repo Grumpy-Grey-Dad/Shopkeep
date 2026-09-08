@@ -79,3 +79,29 @@ export async function adjustStanding(actor, playerActorId, delta) {
   if (!delta) return;
   return setStanding(actor, playerActorId, getStanding(actor, playerActorId) + delta);
 }
+
+/**
+ * How many times each player has haggled at this shop since the GM last
+ * reset it. There's no way for the module to know when a "visit" starts
+ * or ends on its own (no calendar integration exists, per the spec's own
+ * note on time-delay orders) — so this is a GM-triggered reset, same
+ * philosophy as Restock, rather than something the module tries to guess
+ * from window open/close.
+ */
+export function getHaggleAttempts(actor) {
+  return actor?.getFlag(MODULE_ID, "haggleAttempts") ?? {};
+}
+
+export async function recordHaggleAttempt(actor, playerActorId) {
+  const attempts = getHaggleAttempts(actor);
+  const wasFirstThisVisit = !attempts[playerActorId];
+  await actor.setFlag(MODULE_ID, "haggleAttempts", {
+    ...attempts,
+    [playerActorId]: (attempts[playerActorId] ?? 0) + 1
+  });
+  return wasFirstThisVisit;
+}
+
+export async function resetHaggleAttempts(actor) {
+  return actor.setFlag(MODULE_ID, "haggleAttempts", {});
+}

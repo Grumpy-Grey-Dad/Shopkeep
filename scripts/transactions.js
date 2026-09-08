@@ -10,14 +10,14 @@ export function sellPayoutCopper(item, quantity, config) {
   return Math.round((itemCostCopper(item) * quantity * percent) / 100);
 }
 
-export async function buyItem(shopActor, buyerActor, itemId, quantity = 1) {
+export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, discountPercent = 0) {
   const item = shopActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item no longer in stock." };
 
   const available = item.system.quantity ?? 0;
   if (quantity > available) return { ok: false, message: `Only ${available} in stock.` };
 
-  const cost = itemCostCopper(item) * quantity;
+  const cost = Math.round((itemCostCopper(item) * quantity * (100 - discountPercent)) / 100);
   if (!canAfford(buyerActor, cost)) {
     return { ok: false, message: `${buyerActor.name} can't afford this (needs ${copperToDisplay(cost)}).` };
   }
@@ -44,7 +44,7 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1) {
   return { ok: true, message: `${buyerActor.name} bought ${quantity}x ${item.name} for ${copperToDisplay(cost)}.` };
 }
 
-export async function sellItem(shopActor, sellerActor, itemId, quantity = 1) {
+export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, premiumPercent = 0) {
   const config = getShopConfig(shopActor);
   const item = sellerActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item not found on seller." };
@@ -58,8 +58,9 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1) {
 
   // D&D norm: shops pay a fraction of listed value buying from players.
   // Not in the original spec — added here as a sensible default, flagged
-  // as an open tuning value (sellBackPercent, defaults 50).
-  const payout = sellPayoutCopper(item, quantity, config);
+  // as an open tuning value (sellBackPercent, defaults 50). A successful
+  // sell-haggle adds premiumPercent on top of that base payout.
+  const payout = Math.round((sellPayoutCopper(item, quantity, config) * (100 + premiumPercent)) / 100);
 
   if (!canAfford(shopActor, payout)) {
     return { ok: false, message: "This shop can't afford to buy that right now." };

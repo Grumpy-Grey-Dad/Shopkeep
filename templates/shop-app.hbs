@@ -16,6 +16,7 @@
     </div>
     {{#if canManage}}
     <button type="button" data-action="restock">Restock</button>
+    <button type="button" data-action="resetHaggleCounts">Reset Haggle Counts</button>
     {{/if}}
   </header>
 
@@ -53,6 +54,7 @@
           {{#if ../canManage}}<td>{{this.origin}}</td>{{/if}}
           <td>
             <button type="button" data-action="buy" data-item-id="{{this.id}}">Buy</button>
+            <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="buy">Haggle</button>
             {{#if ../canManage}}<button type="button" data-action="removeItem" data-item-id="{{this.id}}">Remove</button>{{/if}}
           </td>
         </tr>
@@ -73,7 +75,10 @@
           <td><img src="{{this.img}}" width="24" height="24"></td>
           <td>{{this.name}}</td>
           <td>{{this.price}}</td>
-          <td><button type="button" data-action="sell" data-item-id="{{this.id}}">Sell</button></td>
+          <td>
+            <button type="button" data-action="sell" data-item-id="{{this.id}}">Sell</button>
+            <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="sell">Haggle</button>
+          </td>
         </tr>
         {{/each}}
       </tbody>
@@ -106,7 +111,13 @@
       <tbody>
         {{#each pendingRequests}}
         <tr>
-          <td>{{this.actorName}} — {{this.serviceName}} ({{formatCopper this.costCopper}})</td>
+          <td>
+            {{#if (eq this.kind "haggle")}}
+            {{this.actorName}} — haggling over {{this.itemName}} ({{this.direction}})
+            {{else}}
+            {{this.actorName}} — {{this.serviceName}} ({{formatCopper this.costCopper}})
+            {{/if}}
+          </td>
           <td>
             <button type="button" data-action="approveRequest" data-request-id="{{this.id}}">Approve</button>
             <button type="button" data-action="denyRequest" data-request-id="{{this.id}}">Deny</button>
@@ -242,6 +253,28 @@
       <label>Target Stock Count<input type="number" name="targetStockCount" value="{{config.targetStockCount}}"></label>
       <label>Max Qty per Item<input type="number" name="maxQuantityPerItem" value="{{config.maxQuantityPerItem}}"></label>
       <label>Sell-back % (what the shop pays for player-sold goods)<input type="number" name="sellBackPercent" value="{{config.sellBackPercent}}"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Haggling</legend>
+      <label>Skill Rolled
+        <select name="haggleSkill">
+          {{#each haggleSkills}}
+          <option value="{{this.key}}" {{#if (eq this.key ../config.haggleSkill)}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label>DC<input type="number" name="haggleDC" value="{{config.haggleDC}}"></label>
+      <label>Discount/Premium % on success<input type="number" name="haggleDiscountPercent" value="{{config.haggleDiscountPercent}}"></label>
+      <label>Flag threshold (above this listed value, haggling needs GM approval)
+        <input type="number" name="flagGoldThresholdValue" value="{{config.flagGoldThreshold.value}}" style="width:5em">
+        <select name="flagGoldThresholdDenomination">
+          {{#each currencyDenominations}}
+          <option value="{{this}}" {{#if (eq this ../config.flagGoldThreshold.denomination)}}selected{{/if}}>{{this}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <p class="vs-hint">Items of rare rarity or better always need GM approval to haggle over, regardless of value.</p>
     </fieldset>
 
     <fieldset>

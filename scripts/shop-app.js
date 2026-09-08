@@ -6,11 +6,14 @@ import {
   getPendingRequests,
   getPendingOrders,
   getStanding,
-  setStanding
+  setStanding,
+  resetHaggleAttempts
 } from "./shop-data.js";
 import { restockShop, addManualItem, itemCostCopper } from "./restock.js";
 import { buyItem, sellItem, sellPayoutCopper } from "./transactions.js";
-import { useService, approveRequest, denyRequest, fulfillOrder, serviceCostCopper } from "./services.js";
+import { useService, fulfillOrder, serviceCostCopper } from "./services.js";
+import { attemptHaggle } from "./haggle.js";
+import { approveRequest, denyRequest } from "./requests.js";
 import { copperToDisplay, actorTotalCopper } from "./currency.js";
 
 const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
@@ -67,7 +70,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       loadSuggestedServices: ShopApp.#onLoadSuggestedServices,
       approveRequest: ShopApp.#onApproveRequest,
       denyRequest: ShopApp.#onDenyRequest,
-      fulfillOrder: ShopApp.#onFulfillOrder
+      fulfillOrder: ShopApp.#onFulfillOrder,
+      haggle: ShopApp.#onHaggle,
+      resetHaggleCounts: ShopApp.#onResetHaggleCounts
     }
   };
 
@@ -210,6 +215,10 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       ? game.tables.contents.map((t) => ({ id: t.id, name: t.name }))
       : [];
 
+    const haggleSkills = canManage
+      ? Object.entries(CONFIG.DND5E?.skills ?? {}).map(([key, s]) => ({ key, label: s.label }))
+      : [];
+
     const services = (config.services ?? []).map((s) => ({
       ...s,
       linkedTableNames: (s.rollTableIds ?? [])
@@ -253,6 +262,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       sellable,
       shopTypes: SHOP_TYPES,
       worldTables,
+      haggleSkills,
       services,
       visibleServices,
       pendingRequests,
@@ -363,7 +373,14 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       maxQuantityPerItem: Number(getValue("maxQuantityPerItem")) || 1,
       sellBackPercent: Number(getValue("sellBackPercent")) || 50,
       shopType: getValue("shopType"),
-      typeLock: form.querySelector('[name="typeLock"]')?.checked ?? false
+      typeLock: form.querySelector('[name="typeLock"]')?.checked ?? false,
+      haggleSkill: getValue("haggleSkill") || "per",
+      haggleDC: Number(getValue("haggleDC")) || 10,
+      haggleDiscountPercent: Number(getValue("haggleDiscountPercent")) || 0,
+      flagGoldThreshold: {
+        value: Number(getValue("flagGoldThresholdValue")) || 0,
+        denomination: getValue("flagGoldThresholdDenomination") || "gp"
+      }
     });
 
     ui.notifications.info("Shop configuration saved.");
@@ -475,7 +492,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       if (!chosenTableId) return;
     }
 
-    const result = await approveRequest(this.actor, requestId, chosenTableId);
+    const result = await approveRequest(this.actor, requestId, { chosenTableId });
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     this.render();
   }
@@ -493,6 +510,28 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     const orderId = target.dataset.orderId;
     const result = await fulfillOrder(this.actor, orderId);
     ui.notifications[result.ok ? "info" : "warn"](result.message);
+    this.render();
+  }
+
+  static async #onHaggle(_event, target) {
+    const { itemId, direction } = target.dataset;
+    const actorActor = this.actingActorId ? game.actors.get(this.actingActorId) : null;
+    if (!actorActor) {
+      return ui.notifications.warn(
+        game.user.isGM
+          ? "Pick an acting character first."
+          : "You don't have a character assigned — ask your GM to set one in Player Configuration."
+      );
+    }
+    const result = await attemptHaggle(this.actor, actorActor, itemId, direction);
+    ui.notifications[result.ok ? "info" : "warn"](result.message);
+    if (result.ok) this.render();
+  }
+
+  static async #onResetHaggleCounts() {
+    if (!game.user.isGM) return;
+    await resetHaggleAttempts(this.actor);
+    ui.notifications.info("Haggle counts reset for this visit.");
     this.render();
   }
 }

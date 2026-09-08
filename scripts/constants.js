@@ -25,14 +25,30 @@ export const DEFAULT_SHOP_CONFIG = {
   typeLock: false,
   services: [],
   // Standing point values are an explicitly open tuning value per the
-  // spec — this is a starting default, not a fixed rule. Only the
-  // purchase increment is wired up in Phase 3; haggle/theft increments
-  // get their own config fields when those phases are built.
-  standingPerPurchase: 1
+  // spec — these are starting defaults, not fixed rules.
+  standingPerPurchase: 1,
+  standingPerHaggleSuccess: 2,
+  // Applied whenever a haggle attempt isn't the player's first this visit,
+  // regardless of whether that attempt succeeds or fails (the spec states
+  // this as a consequence of the repeat attempt itself, not of failing).
+  standingPerHaggleRepeat: -1,
+  haggleSkill: "per",
+  haggleDC: 15,
+  // % off the listed price on a successful buy-haggle, or % on top of the
+  // normal sell-back payout on a successful sell-haggle.
+  haggleDiscountPercent: 10,
+  // Section 6's value-based flagging threshold — explicitly GM-set per
+  // the spec. Rarity's own "rare or better" flagging rule is not
+  // configurable (the spec states it as a fixed rule, unlike the gold
+  // threshold), so it isn't a config field here.
+  flagGoldThreshold: { value: 500, denomination: "gp" }
 };
 
 export const RESOLUTION_TYPES = ["instant", "roll", "time-delay", "rolltable"];
 export const CURRENCY_DENOMINATIONS = ["pp", "gp", "ep", "sp", "cp"];
+
+/** Canonical low-to-high order, since "rare or better" needs a rank to compare against, not just a set membership check. */
+export const RARITY_RANK = ["", "common", "uncommon", "rare", "veryRare", "legendary", "artifact"];
 
 export const SHOP_TYPES = [
   "General Store / Inn",

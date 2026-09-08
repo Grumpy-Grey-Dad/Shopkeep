@@ -1,11 +1,6 @@
-import {
-  getShopConfig,
-  getPendingRequests,
-  setPendingRequests,
-  getPendingOrders,
-  setPendingOrders
-} from "./shop-data.js";
+import { getShopConfig, getPendingRequests, setPendingRequests, getPendingOrders, setPendingOrders } from "./shop-data.js";
 import { toCopper, copperToDisplay, canAfford, payCost, receivePayment } from "./currency.js";
+import { notifyGMs, notifyActorOwner } from "./notify.js";
 
 function findService(config, serviceId) {
   return config.services.find((s) => s.id === serviceId);
@@ -23,17 +18,6 @@ function needsGmAttention(service) {
   if (service.alwaysFlag) return true;
   if (service.resolutionType === "rolltable" && (service.rollTableIds?.length ?? 0) > 1) return true;
   return false;
-}
-
-async function notifyGMs(content) {
-  const gmIds = game.users.filter((u) => u.isGM).map((u) => u.id);
-  return ChatMessage.create({ content, whisper: gmIds });
-}
-
-async function notifyActorOwner(actor, content) {
-  const owners = game.users.filter((u) => !u.isGM && actor.testUserPermission(u, "OWNER")).map((u) => u.id);
-  if (!owners.length) return null;
-  return ChatMessage.create({ content, whisper: owners });
 }
 
 /** Executes a service that's already cleared any GM-approval requirement. */
@@ -117,6 +101,7 @@ export async function useService(shopActor, actorActor, serviceId) {
     const requests = getPendingRequests(shopActor);
     requests.push({
       id: foundry.utils.randomID(),
+      kind: "service",
       serviceId: service.id,
       serviceName: service.name,
       actorId: actorActor.id,
@@ -135,18 +120,8 @@ export async function useService(shopActor, actorActor, serviceId) {
   return resolveService(shopActor, actorActor, service);
 }
 
-export async function approveRequest(shopActor, requestId, chosenTableId = null) {
-  const requests = getPendingRequests(shopActor);
-  const request = requests.find((r) => r.id === requestId);
-  if (!request) return { ok: false, message: "Request no longer exists." };
-
-  const actorActor = game.actors.get(request.actorId);
-  if (!actorActor) {
-    await setPendingRequests(shopActor, requests.filter((r) => r.id !== requestId));
-    return { ok: false, message: "The requesting character no longer exists." };
-  }
-
-  const config = getShopConfig(shopActor);
+/** Resolves a pending "service" request on GM approval — looked up by requests.js's generic dispatcher. */
+export async function resolveServiceRequest(shopActor, actorActor, request, config, chosenTableId = null) {
   let service = findService(config, request.serviceId);
   // Fall back to the request's own snapshot if the service was edited/removed since.
   if (!service) {
@@ -160,32 +135,7 @@ export async function approveRequest(shopActor, requestId, chosenTableId = null)
   if (chosenTableId) {
     service = { ...service, rollTableIds: [chosenTableId] };
   }
-
-  const result = await resolveService(shopActor, actorActor, service);
-  // Only clear the request once it actually goes through — e.g. the
-  // requester might no longer be able to afford it by approval time, and
-  // silently dropping the request then would lose it with no way to
-  // retry once they can.
-  if (result.ok) {
-    await setPendingRequests(shopActor, requests.filter((r) => r.id !== requestId));
-  }
-  return result;
-}
-
-export async function denyRequest(shopActor, requestId) {
-  const requests = getPendingRequests(shopActor);
-  const request = requests.find((r) => r.id === requestId);
-  if (!request) return { ok: false, message: "Request no longer exists." };
-
-  const actorActor = game.actors.get(request.actorId);
-  if (actorActor) {
-    await notifyActorOwner(
-      actorActor,
-      `Your request for <strong>${request.serviceName}</strong> at <strong>${shopActor.name}</strong> was denied.`
-    );
-  }
-  await setPendingRequests(shopActor, requests.filter((r) => r.id !== requestId));
-  return { ok: true, message: `Denied ${request.serviceName} for ${request.actorName}.` };
+  return resolveService(shopActor, actorActor, service);
 }
 
 export async function fulfillOrder(shopActor, orderId) {
