@@ -164,7 +164,11 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     }
 
     const itemTypes = ["weapon", "equipment", "consumable", "tool", "loot", "container"];
-    const rarities = Object.keys(CONFIG.DND5E?.itemRarity ?? {});
+    // "" (blank) is how ordinary mundane gear is actually tagged in
+    // dnd5e — "common" specifically means the weakest tier of MAGIC item,
+    // not "non-magical." Exposing blank as its own checkbox stops that
+    // mislabeling from silently filtering a mundane-goods shop to zero.
+    const rarities = ["", ...Object.keys(CONFIG.DND5E?.itemRarity ?? {})];
 
     const packs = canManage
       ? game.packs

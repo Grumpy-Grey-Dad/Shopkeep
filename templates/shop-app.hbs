@@ -203,7 +203,7 @@
       </p>
       <p><strong>Rarities</strong><br>
         {{#each rarities}}
-        <label class="vs-check"><input type="checkbox" name="filterRarities" value="{{this}}" {{#if (includes ../config.filters.rarities this)}}checked{{/if}}> {{this}}</label>
+        <label class="vs-check"><input type="checkbox" name="filterRarities" value="{{this}}" {{#if (includes ../config.filters.rarities this)}}checked{{/if}}> {{#if this}}{{this}}{{else}}None / Mundane{{/if}}</label>
         {{/each}}
       </p>
       <label>Include keywords (comma-separated)<input type="text" name="includeKeywords" value="{{config.filters.includeKeywords}}"></label>
