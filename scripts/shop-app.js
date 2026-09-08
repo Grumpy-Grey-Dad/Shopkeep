@@ -5,6 +5,7 @@ import {
   enableShop,
   getPendingRequests,
   getPendingOrders,
+  getFlaggedEvents,
   getStanding,
   setStanding,
   resetHaggleAttempts
@@ -13,6 +14,7 @@ import { restockShop, addManualItem, itemCostCopper } from "./restock.js";
 import { buyItem, sellItem, sellPayoutCopper } from "./transactions.js";
 import { useService, fulfillOrder, serviceCostCopper } from "./services.js";
 import { attemptHaggle } from "./haggle.js";
+import { attemptTheft, acknowledgeFlaggedEvent } from "./theft.js";
 import { approveRequest, denyRequest } from "./requests.js";
 import { copperToDisplay, actorTotalCopper } from "./currency.js";
 
@@ -72,7 +74,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       denyRequest: ShopApp.#onDenyRequest,
       fulfillOrder: ShopApp.#onFulfillOrder,
       haggle: ShopApp.#onHaggle,
-      resetHaggleCounts: ShopApp.#onResetHaggleCounts
+      resetHaggleCounts: ShopApp.#onResetHaggleCounts,
+      theft: ShopApp.#onTheft,
+      acknowledgeFlaggedEvent: ShopApp.#onAcknowledgeFlaggedEvent
     }
   };
 
@@ -239,6 +243,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
     const pendingRequests = canManage ? getPendingRequests(this.actor) : [];
     const pendingOrders = canManage ? getPendingOrders(this.actor) : [];
+    const flaggedEvents = canManage ? getFlaggedEvents(this.actor) : [];
 
     // The acting player's own standing with this merchant — never anyone
     // else's. GMs additionally get a full roster to review/adjust.
@@ -267,6 +272,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       visibleServices,
       pendingRequests,
       pendingOrders,
+      flaggedEvents,
       currencyDenominations: CURRENCY_DENOMINATIONS,
       standing,
       allStanding
@@ -380,7 +386,10 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       flagGoldThreshold: {
         value: Number(getValue("flagGoldThresholdValue")) || 0,
         denomination: getValue("flagGoldThresholdDenomination") || "gp"
-      }
+      },
+      theftSkill: getValue("theftSkill") || "slt",
+      theftDC: Number(getValue("theftDC")) || 10,
+      standingPerFailedTheft: Number(getValue("standingPerFailedTheft")) || 0
     });
 
     ui.notifications.info("Shop configuration saved.");
@@ -532,6 +541,28 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     if (!game.user.isGM) return;
     await resetHaggleAttempts(this.actor);
     ui.notifications.info("Haggle counts reset for this visit.");
+    this.render();
+  }
+
+  static async #onTheft(_event, target) {
+    const itemId = target.dataset.itemId;
+    const actorActor = this.actingActorId ? game.actors.get(this.actingActorId) : null;
+    if (!actorActor) {
+      return ui.notifications.warn(
+        game.user.isGM
+          ? "Pick an acting character first."
+          : "You don't have a character assigned — ask your GM to set one in Player Configuration."
+      );
+    }
+    const result = await attemptTheft(this.actor, actorActor, itemId);
+    ui.notifications[result.ok ? "info" : "warn"](result.message);
+    if (result.ok) this.render();
+  }
+
+  static async #onAcknowledgeFlaggedEvent(_event, target) {
+    if (!game.user.isGM) return;
+    const eventId = target.dataset.eventId;
+    await acknowledgeFlaggedEvent(this.actor, eventId);
     this.render();
   }
 }

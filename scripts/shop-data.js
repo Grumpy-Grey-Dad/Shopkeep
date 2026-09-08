@@ -56,6 +56,23 @@ export async function setPendingOrders(actor, orders) {
 }
 
 /**
+ * Failed-theft notifications for the GM to review and narrate. Distinct
+ * from pendingRequests on purpose: a pending request is "something is
+ * waiting for a decision before it happens," but a theft attempt has
+ * already resolved (roll and standing hit both already applied) by the
+ * time this is created — the GM isn't approving anything, just being
+ * told to go narrate the in-fiction consequence, which is why this gets
+ * its own array with its own "Acknowledge" action instead of Approve/Deny.
+ */
+export function getFlaggedEvents(actor) {
+  return actor?.getFlag(MODULE_ID, "flaggedEvents") ?? [];
+}
+
+export async function setFlaggedEvents(actor, events) {
+  return actor.setFlag(MODULE_ID, "flaggedEvents", events);
+}
+
+/**
  * Per-NPC standing: {[playerActorId]: number}, stored on the merchant's
  * own Actor document. This already satisfies the spec's "keyed to the
  * merchant's base Actor ID, not the token" requirement by construction —

@@ -41,7 +41,14 @@ export const DEFAULT_SHOP_CONFIG = {
   // the spec. Rarity's own "rare or better" flagging rule is not
   // configurable (the spec states it as a fixed rule, unlike the gold
   // threshold), so it isn't a config field here.
-  flagGoldThreshold: { value: 500, denomination: "gp" }
+  flagGoldThreshold: { value: 500, denomination: "gp" },
+  theftSkill: "slt",
+  theftDC: 15,
+  // Only a *failed* theft touches standing — a successful one (partial or
+  // clean) was never noticed, so there's nothing for the merchant to
+  // react to. Stored as the actual (negative) delta applied, matching how
+  // standingPerHaggleRepeat is stored, rather than a magnitude to negate.
+  standingPerFailedTheft: -3
 };
 
 export const RESOLUTION_TYPES = ["instant", "roll", "time-delay", "rolltable"];

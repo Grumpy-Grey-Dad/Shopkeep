@@ -55,6 +55,7 @@
           <td>
             <button type="button" data-action="buy" data-item-id="{{this.id}}">Buy</button>
             <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="buy">Haggle</button>
+            <button type="button" data-action="theft" data-item-id="{{this.id}}">Steal</button>
             {{#if ../canManage}}<button type="button" data-action="removeItem" data-item-id="{{this.id}}">Remove</button>{{/if}}
           </td>
         </tr>
@@ -138,6 +139,22 @@
         <tr>
           <td>{{this.actorName}} — {{this.serviceName}} ({{this.leadTimeDays}} day(s))</td>
           <td><button type="button" data-action="fulfillOrder" data-order-id="{{this.id}}">Mark Fulfilled</button></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if flaggedEvents.length}}
+  <section class="vs-pending">
+    <h3>Flagged Events</h3>
+    <table>
+      <tbody>
+        {{#each flaggedEvents}}
+        <tr>
+          <td>{{this.actorName}} was caught stealing {{this.itemName}} (rolled {{this.rollTotal}} vs DC {{this.dc}}) — narrate the consequence.</td>
+          <td><button type="button" data-action="acknowledgeFlaggedEvent" data-event-id="{{this.id}}">Acknowledge</button></td>
         </tr>
         {{/each}}
       </tbody>
@@ -275,6 +292,20 @@
         </select>
       </label>
       <p class="vs-hint">Items of rare rarity or better always need GM approval to haggle over, regardless of value.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Theft</legend>
+      <label>Skill Rolled
+        <select name="theftSkill">
+          {{#each haggleSkills}}
+          <option value="{{this.key}}" {{#if (eq this.key ../config.theftSkill)}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label>DC<input type="number" name="theftDC" value="{{config.theftDC}}"></label>
+      <label>Standing penalty on a failed attempt<input type="number" name="standingPerFailedTheft" value="{{config.standingPerFailedTheft}}"></label>
+      <p class="vs-hint">Meeting the DC grabs a random stock item; beating it by 5+ gets the item actually targeted. Only a failed attempt is flagged for GM review — success is never noticed.</p>
     </fieldset>
 
     <fieldset>
