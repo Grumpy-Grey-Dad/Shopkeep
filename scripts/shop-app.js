@@ -385,10 +385,14 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
   static async #onLoadSuggestedServices() {
     if (!game.user.isGM) return;
-    const config = getShopConfig(this.actor);
-    const suggested = SUGGESTED_SERVICES[config.shopType];
+    // Read the dropdown's current selection, not the last-saved config —
+    // picking a type and loading its services are two different buttons,
+    // so the type may not have been saved yet when this one is clicked.
+    const shopType = this.element.querySelector('[name="shopType"]')?.value;
+    const suggested = SUGGESTED_SERVICES[shopType];
     if (!suggested) return ui.notifications.warn("Pick a Shop Type first.");
 
+    const config = getShopConfig(this.actor);
     const existingNames = new Set(config.services.map((s) => s.name));
     const additions = suggested
       .filter((s) => !existingNames.has(s.name))
@@ -404,8 +408,13 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
         ...s
       }));
 
-    if (!additions.length) return ui.notifications.info("Nothing new to add — already present.");
-    await setShopConfig(this.actor, { services: [...config.services, ...additions] });
+    if (!additions.length) {
+      // Still persist the type selection even if there's nothing new to
+      // add, so it doesn't appear to "not have saved" on next render.
+      await setShopConfig(this.actor, { shopType });
+      return ui.notifications.info("Nothing new to add — already present.");
+    }
+    await setShopConfig(this.actor, { shopType, services: [...config.services, ...additions] });
     ui.notifications.info(`Added ${additions.length} suggested service(s).`);
     this.render();
   }
