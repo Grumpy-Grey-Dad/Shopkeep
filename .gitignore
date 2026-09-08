@@ -1,2 +1,3 @@
 *.zip
 .DS_Store
+.git-commit-msg.txt
