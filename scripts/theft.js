@@ -1,6 +1,7 @@
 import { MODULE_ID } from "./constants.js";
 import { getShopConfig, adjustStanding, getFlaggedEvents, setFlaggedEvents } from "./shop-data.js";
 import { notifyGMs } from "./notify.js";
+import { applyImmediateConsequence } from "./consequence.js";
 
 function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
@@ -62,6 +63,11 @@ export async function attemptTheft(shopActor, actorActor, itemId) {
       `<strong>${actorActor.name}</strong> was caught stealing <strong>${targetItem.name}</strong> from ` +
         `<strong>${shopActor.name}</strong> — narrate the consequence (see Flagged Events in the Shop window).`
     );
+
+    // "merchant"/"hostile" modes are pure state changes and apply right
+    // now; "guard" mode needs the GM to interactively place a token and
+    // is triggered separately from the Flagged Events panel instead.
+    await applyImmediateConsequence(shopActor, actorActor);
 
     return { ok: true, message: `Theft failed (rolled ${roll.total} vs DC ${dc}) — caught!` };
   }

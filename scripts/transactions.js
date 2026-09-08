@@ -1,5 +1,5 @@
 import { MODULE_ID, ORIGIN } from "./constants.js";
-import { getShopConfig, adjustStanding } from "./shop-data.js";
+import { getShopConfig, adjustStanding, isBanned } from "./shop-data.js";
 import { itemCostCopper } from "./restock.js";
 import { canAfford, payCost, receivePayment, copperToDisplay } from "./currency.js";
 
@@ -11,6 +11,9 @@ export function sellPayoutCopper(item, quantity, config) {
 }
 
 export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, discountPercent = 0, awardPurchaseStanding = true) {
+  if (isBanned(shopActor, buyerActor.id)) {
+    return { ok: false, message: `${shopActor.name} refuses to deal with ${buyerActor.name}.` };
+  }
   const item = shopActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item no longer in stock." };
 
@@ -51,6 +54,9 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, disco
 }
 
 export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, premiumPercent = 0) {
+  if (isBanned(shopActor, sellerActor.id)) {
+    return { ok: false, message: `${shopActor.name} refuses to deal with ${sellerActor.name}.` };
+  }
   const config = getShopConfig(shopActor);
   const item = sellerActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item not found on seller." };

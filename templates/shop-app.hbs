@@ -154,7 +154,10 @@
         {{#each flaggedEvents}}
         <tr>
           <td>{{this.actorName}} was caught stealing {{this.itemName}} (rolled {{this.rollTotal}} vs DC {{this.dc}}) — narrate the consequence.</td>
-          <td><button type="button" data-action="acknowledgeFlaggedEvent" data-event-id="{{this.id}}">Acknowledge</button></td>
+          <td>
+            {{#if this.showSpawnGuard}}<button type="button" data-action="spawnGuard" data-actor-id="{{this.actorId}}">Spawn Guard</button>{{/if}}
+            <button type="button" data-action="acknowledgeFlaggedEvent" data-event-id="{{this.id}}">Acknowledge</button>
+          </td>
         </tr>
         {{/each}}
       </tbody>
@@ -169,8 +172,9 @@
       <tbody>
         {{#each allStanding}}
         <tr>
-          <td>{{this.name}}</td>
+          <td>{{this.name}}{{#if this.banned}} <span class="vs-hint">(banned)</span>{{/if}}</td>
           <td><input type="number" data-standing-actor-id="{{this.id}}" value="{{this.value}}" style="width:4em"></td>
+          <td>{{#if this.banned}}<button type="button" data-action="unbanActor" data-actor-id="{{this.id}}">Lift Ban</button>{{/if}}</td>
         </tr>
         {{/each}}
       </tbody>
@@ -306,6 +310,27 @@
       <label>DC<input type="number" name="theftDC" value="{{config.theftDC}}"></label>
       <label>Standing penalty on a failed attempt<input type="number" name="standingPerFailedTheft" value="{{config.standingPerFailedTheft}}"></label>
       <p class="vs-hint">Meeting the DC grabs a random stock item; beating it by 5+ gets the item actually targeted. Only a failed attempt is flagged for GM review — success is never noticed.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Theft Consequence (on a failed attempt)</legend>
+      <label>Mode
+        <select name="theftConsequenceMode">
+          {{#each theftConsequenceModes}}
+          <option value="{{this.key}}" {{#if (eq this.key ../config.theftConsequenceMode)}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label>Guard actor to spawn (used only in Guard mode)
+        <select name="guardActorId">
+          <option value="">-- none --</option>
+          {{#each guardActors}}
+          <option value="{{this.id}}" {{#if (eq this.id ../config.guardActorId)}}selected{{/if}}>{{this.name}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label>Standing floor on Hostile mode<input type="number" name="hostileStandingFloor" value="{{config.hostileStandingFloor}}"></label>
+      <p class="vs-hint">Merchant/Hostile modes apply automatically the instant a theft fails. Guard mode instead adds a "Spawn Guard" button to the matching Flagged Event — you place the token and start combat when you're ready; running the fight itself is on you.</p>
     </fieldset>
 
     <fieldset>

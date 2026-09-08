@@ -1,5 +1,12 @@
 import { RARITY_RANK } from "./constants.js";
-import { getShopConfig, getPendingRequests, setPendingRequests, adjustStanding, recordHaggleAttempt } from "./shop-data.js";
+import {
+  getShopConfig,
+  getPendingRequests,
+  setPendingRequests,
+  adjustStanding,
+  recordHaggleAttempt,
+  isBanned
+} from "./shop-data.js";
 import { itemCostCopper } from "./restock.js";
 import { toCopper } from "./currency.js";
 import { buyItem, sellItem } from "./transactions.js";
@@ -67,6 +74,9 @@ async function performHaggle(shopActor, actorActor, item, direction, config) {
 /** Entry point for a player/GM clicking "Haggle" on a stock or sellable item. */
 export async function attemptHaggle(shopActor, actorActor, itemId, direction) {
   if (!actorActor) return { ok: false, message: "No acting character." };
+  if (isBanned(shopActor, actorActor.id)) {
+    return { ok: false, message: `${shopActor.name} refuses to deal with ${actorActor.name}.` };
+  }
   const config = getShopConfig(shopActor);
   const item = findItem(shopActor, actorActor, direction, itemId);
   if (!item) return { ok: false, message: "Item not found." };

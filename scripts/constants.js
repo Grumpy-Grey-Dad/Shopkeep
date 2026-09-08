@@ -48,8 +48,23 @@ export const DEFAULT_SHOP_CONFIG = {
   // clean) was never noticed, so there's nothing for the merchant to
   // react to. Stored as the actual (negative) delta applied, matching how
   // standingPerHaggleRepeat is stored, rather than a magnitude to negate.
-  standingPerFailedTheft: -3
+  standingPerFailedTheft: -3,
+  // "merchant" (verbal refusal + ban), "guard" (spawn + combat), or
+  // "hostile" (disposition flip + ban + standing floor). Single-select
+  // per shop per the spec — a lone village stallholder has no muscle to
+  // call on, a market shop might.
+  theftConsequenceMode: "merchant",
+  guardActorId: "",
+  // "Standing craters" on hostile — this is a hard floor set on failure,
+  // not a delta stacked on top of the ordinary standingPerFailedTheft hit.
+  hostileStandingFloor: -20
 };
+
+export const THEFT_CONSEQUENCE_MODES = [
+  { key: "merchant", label: "Merchant reacts only (verbal refusal, bans future dealings)" },
+  { key: "guard", label: "Guard spawns (GM places a token, starts combat)" },
+  { key: "hostile", label: "Merchant turns hostile (disposition flip, standing craters, bans dealings)" }
+];
 
 export const RESOLUTION_TYPES = ["instant", "roll", "time-delay", "rolltable"];
 export const CURRENCY_DENOMINATIONS = ["pp", "gp", "ep", "sp", "cp"];

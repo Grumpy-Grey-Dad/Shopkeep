@@ -73,6 +73,34 @@ export async function setFlaggedEvents(actor, events) {
 }
 
 /**
+ * Players this merchant refuses to deal with — set by the "merchant
+ * reacts" and "merchant turns hostile" theft consequences. Blocks
+ * buy/sell/haggle only, per the spec's own wording; a banned player can
+ * still attempt theft (being banned as a customer doesn't stop someone
+ * trying a five-finger discount).
+ */
+export function getBannedActorIds(actor) {
+  return actor?.getFlag(MODULE_ID, "bannedActorIds") ?? [];
+}
+
+export async function setBannedActorIds(actor, ids) {
+  return actor.setFlag(MODULE_ID, "bannedActorIds", ids);
+}
+
+export function isBanned(actor, playerActorId) {
+  return getBannedActorIds(actor).includes(playerActorId);
+}
+
+export async function banActor(actor, playerActorId) {
+  const ids = getBannedActorIds(actor);
+  if (!ids.includes(playerActorId)) await setBannedActorIds(actor, [...ids, playerActorId]);
+}
+
+export async function unbanActor(actor, playerActorId) {
+  await setBannedActorIds(actor, getBannedActorIds(actor).filter((id) => id !== playerActorId));
+}
+
+/**
  * Per-NPC standing: {[playerActorId]: number}, stored on the merchant's
  * own Actor document. This already satisfies the spec's "keyed to the
  * merchant's base Actor ID, not the token" requirement by construction —

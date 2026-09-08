@@ -1,4 +1,10 @@
-import { MODULE_ID, SHOP_TYPES, SUGGESTED_SERVICES, CURRENCY_DENOMINATIONS } from "./constants.js";
+import {
+  MODULE_ID,
+  SHOP_TYPES,
+  SUGGESTED_SERVICES,
+  CURRENCY_DENOMINATIONS,
+  THEFT_CONSEQUENCE_MODES
+} from "./constants.js";
 import {
   getShopConfig,
   setShopConfig,
@@ -8,13 +14,16 @@ import {
   getFlaggedEvents,
   getStanding,
   setStanding,
-  resetHaggleAttempts
+  resetHaggleAttempts,
+  getBannedActorIds,
+  unbanActor
 } from "./shop-data.js";
 import { restockShop, addManualItem, itemCostCopper } from "./restock.js";
 import { buyItem, sellItem, sellPayoutCopper } from "./transactions.js";
 import { useService, fulfillOrder, serviceCostCopper } from "./services.js";
 import { attemptHaggle } from "./haggle.js";
 import { attemptTheft, acknowledgeFlaggedEvent } from "./theft.js";
+import { spawnGuard } from "./consequence.js";
 import { approveRequest, denyRequest } from "./requests.js";
 import { copperToDisplay, actorTotalCopper } from "./currency.js";
 
@@ -76,7 +85,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       haggle: ShopApp.#onHaggle,
       resetHaggleCounts: ShopApp.#onResetHaggleCounts,
       theft: ShopApp.#onTheft,
-      acknowledgeFlaggedEvent: ShopApp.#onAcknowledgeFlaggedEvent
+      acknowledgeFlaggedEvent: ShopApp.#onAcknowledgeFlaggedEvent,
+      spawnGuard: ShopApp.#onSpawnGuard,
+      unbanActor: ShopApp.#onUnbanActor
     }
   };
 
@@ -243,14 +254,24 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
     const pendingRequests = canManage ? getPendingRequests(this.actor) : [];
     const pendingOrders = canManage ? getPendingOrders(this.actor) : [];
-    const flaggedEvents = canManage ? getFlaggedEvents(this.actor) : [];
+    const flaggedEvents = canManage
+      ? getFlaggedEvents(this.actor).map((e) => ({ ...e, showSpawnGuard: config.theftConsequenceMode === "guard" }))
+      : [];
 
     // The acting player's own standing with this merchant — never anyone
     // else's. GMs additionally get a full roster to review/adjust.
     const standing = actingActor ? getStanding(this.actor, actingActor.id) : null;
+    const bannedActorIds = getBannedActorIds(this.actor);
     const allStanding = canManage
-      ? playerActors.map((a) => ({ id: a.id, name: a.name, value: getStanding(this.actor, a.id) }))
+      ? playerActors.map((a) => ({
+          id: a.id,
+          name: a.name,
+          value: getStanding(this.actor, a.id),
+          banned: bannedActorIds.includes(a.id)
+        }))
       : [];
+
+    const guardActors = canManage ? game.actors.filter((a) => a.type === "npc").map((a) => ({ id: a.id, name: a.name })) : [];
 
     return {
       actor: this.actor,
@@ -275,7 +296,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       flaggedEvents,
       currencyDenominations: CURRENCY_DENOMINATIONS,
       standing,
-      allStanding
+      allStanding,
+      guardActors,
+      theftConsequenceModes: THEFT_CONSEQUENCE_MODES
     };
   }
 
@@ -389,7 +412,10 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       },
       theftSkill: getValue("theftSkill") || "slt",
       theftDC: Number(getValue("theftDC")) || 10,
-      standingPerFailedTheft: Number(getValue("standingPerFailedTheft")) || 0
+      standingPerFailedTheft: Number(getValue("standingPerFailedTheft")) || 0,
+      theftConsequenceMode: getValue("theftConsequenceMode") || "merchant",
+      guardActorId: getValue("guardActorId") || "",
+      hostileStandingFloor: Number(getValue("hostileStandingFloor")) || 0
     });
 
     ui.notifications.info("Shop configuration saved.");
@@ -563,6 +589,21 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     if (!game.user.isGM) return;
     const eventId = target.dataset.eventId;
     await acknowledgeFlaggedEvent(this.actor, eventId);
+    this.render();
+  }
+
+  static async #onSpawnGuard(_event, target) {
+    if (!game.user.isGM) return;
+    const actorActor = game.actors.get(target.dataset.actorId);
+    if (!actorActor) return ui.notifications.warn("That character no longer exists.");
+    const result = await spawnGuard(this.actor, actorActor);
+    ui.notifications[result.ok ? "info" : "warn"](result.message);
+  }
+
+  static async #onUnbanActor(_event, target) {
+    if (!game.user.isGM) return;
+    await unbanActor(this.actor, target.dataset.actorId);
+    ui.notifications.info("Ban lifted.");
     this.render();
   }
 }
