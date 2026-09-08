@@ -1,5 +1,13 @@
 import { MODULE_ID, SHOP_TYPES, SUGGESTED_SERVICES, CURRENCY_DENOMINATIONS } from "./constants.js";
-import { getShopConfig, setShopConfig, enableShop, getPendingRequests, getPendingOrders } from "./shop-data.js";
+import {
+  getShopConfig,
+  setShopConfig,
+  enableShop,
+  getPendingRequests,
+  getPendingOrders,
+  getStanding,
+  setStanding
+} from "./shop-data.js";
 import { restockShop, addManualItem, itemCostCopper } from "./restock.js";
 import { buyItem, sellItem, sellPayoutCopper } from "./transactions.js";
 import { useService, approveRequest, denyRequest, fulfillOrder, serviceCostCopper } from "./services.js";
@@ -86,6 +94,17 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     this.element.querySelectorAll("[data-service-field]").forEach((el) => {
       el.addEventListener("change", (ev) => this._onServiceFieldChange(ev));
     });
+
+    this.element.querySelectorAll("[data-standing-actor-id]").forEach((el) => {
+      el.addEventListener("change", (ev) => this._onStandingChange(ev));
+    });
+  }
+
+  async _onStandingChange(event) {
+    if (!game.user.isGM) return;
+    const el = event.currentTarget;
+    await setStanding(this.actor, el.dataset.standingActorId, Number(el.value) || 0);
+    this.render();
   }
 
   async _onServiceFieldChange(event) {
@@ -212,6 +231,13 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     const pendingRequests = canManage ? getPendingRequests(this.actor) : [];
     const pendingOrders = canManage ? getPendingOrders(this.actor) : [];
 
+    // The acting player's own standing with this merchant — never anyone
+    // else's. GMs additionally get a full roster to review/adjust.
+    const standing = actingActor ? getStanding(this.actor, actingActor.id) : null;
+    const allStanding = canManage
+      ? playerActors.map((a) => ({ id: a.id, name: a.name, value: getStanding(this.actor, a.id) }))
+      : [];
+
     return {
       actor: this.actor,
       canManage,
@@ -231,7 +257,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       visibleServices,
       pendingRequests,
       pendingOrders,
-      currencyDenominations: CURRENCY_DENOMINATIONS
+      currencyDenominations: CURRENCY_DENOMINATIONS,
+      standing,
+      allStanding
     };
   }
 

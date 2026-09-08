@@ -1,5 +1,5 @@
 import { MODULE_ID, ORIGIN } from "./constants.js";
-import { getShopConfig } from "./shop-data.js";
+import { getShopConfig, adjustStanding } from "./shop-data.js";
 import { itemCostCopper } from "./restock.js";
 import { canAfford, payCost, receivePayment, copperToDisplay } from "./currency.js";
 
@@ -35,6 +35,11 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1) {
   } else {
     await item.update({ "system.quantity": available - quantity });
   }
+
+  // Flat per-transaction bump, not scaled by quantity — this rewards
+  // being a repeat customer (the spec's own framing), not bulk-buying.
+  const config = getShopConfig(shopActor);
+  await adjustStanding(shopActor, buyerActor.id, config.standingPerPurchase);
 
   return { ok: true, message: `${buyerActor.name} bought ${quantity}x ${item.name} for ${copperToDisplay(cost)}.` };
 }

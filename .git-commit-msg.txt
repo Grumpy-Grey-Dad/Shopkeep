@@ -1,0 +1,33 @@
+Phase 3: per-NPC standing
+
+Standing lives as a flag on the merchant's own Actor document, keyed by
+player Actor ID - this already satisfies the spec's "keyed to base Actor
+ID, not the token" requirement by construction, since the module never
+reads/writes via a Token anywhere (only this.actor). No separate
+token-vs-actor drift is possible.
+
+This phase wires up exactly what the build order calls for: the standing
+data model plus the purchase increment. Buying from a shop bumps standing
+by a flat per-transaction amount (config.standingPerPurchase, default 1)
+- flat regardless of quantity, since the spec frames this as rewarding
+being a repeat customer, not rewarding bulk purchases. Selling to the
+shop does not move standing (verified live) - that's a pawnbroker
+relationship, not "repeat customer," and the spec's own wording only
+mentions purchases.
+
+UI: the acting player sees their own standing with this merchant only,
+never anyone else's. GMs additionally get a full roster of every player
+actor's standing, editable inline (spreadsheet-style, same pattern as the
+service editor) for manual overrides - e.g. bumping standing after a
+roleplay moment that didn't go through a mechanical transaction.
+
+Haggle/theft standing effects (increase on successful haggle, decrease on
+repeated haggling or failed theft) are Phases 4/5's job per the build
+order, not this one - the config fields for those get added when those
+phases are actually built, not guessed at now.
+
+Verified live: purchase correctly increments standing (0 -> 1), sell
+correctly leaves it untouched (15 -> 15), and GM manual edit via the
+roster input persists (-> 15).
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>

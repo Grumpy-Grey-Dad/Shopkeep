@@ -54,3 +54,28 @@ export function getPendingOrders(actor) {
 export async function setPendingOrders(actor, orders) {
   return actor.setFlag(MODULE_ID, "pendingOrders", orders);
 }
+
+/**
+ * Per-NPC standing: {[playerActorId]: number}, stored on the merchant's
+ * own Actor document. This already satisfies the spec's "keyed to the
+ * merchant's base Actor ID, not the token" requirement by construction —
+ * the module only ever reads/writes via the Actor (this.actor in
+ * ShopApp), never a Token, so there's no separate token-vs-actor data to
+ * drift apart in the first place.
+ */
+export function getAllStanding(actor) {
+  return actor?.getFlag(MODULE_ID, "standing") ?? {};
+}
+
+export function getStanding(actor, playerActorId) {
+  return getAllStanding(actor)[playerActorId] ?? 0;
+}
+
+export async function setStanding(actor, playerActorId, value) {
+  return actor.setFlag(MODULE_ID, "standing", { ...getAllStanding(actor), [playerActorId]: value });
+}
+
+export async function adjustStanding(actor, playerActorId, delta) {
+  if (!delta) return;
+  return setStanding(actor, playerActorId, getStanding(actor, playerActorId) + delta);
+}

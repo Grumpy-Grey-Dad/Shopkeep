@@ -23,7 +23,12 @@ export const DEFAULT_SHOP_CONFIG = {
   sellBackPercent: 50,
   shopType: "",
   typeLock: false,
-  services: []
+  services: [],
+  // Standing point values are an explicitly open tuning value per the
+  // spec — this is a starting default, not a fixed rule. Only the
+  // purchase increment is wired up in Phase 3; haggle/theft increments
+  // get their own config fields when those phases are built.
+  standingPerPurchase: 1
 };
 
 export const RESOLUTION_TYPES = ["instant", "roll", "time-delay", "rolltable"];

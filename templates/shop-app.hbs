@@ -34,6 +34,9 @@
     {{else}}
     <p class="vs-hint">You don't have a character assigned — ask your GM to set one in Player Configuration.</p>
     {{/if}}
+    {{#if actingActor}}
+    <p class="vs-hint">Standing with {{actor.name}}: <strong>{{standing}}</strong></p>
+    {{/if}}
   </section>
 
   <section class="vs-stock vs-drop-zone">
@@ -124,6 +127,22 @@
         <tr>
           <td>{{this.actorName}} — {{this.serviceName}} ({{this.leadTimeDays}} day(s))</td>
           <td><button type="button" data-action="fulfillOrder" data-order-id="{{this.id}}">Mark Fulfilled</button></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if allStanding.length}}
+  <section class="vs-pending">
+    <h3>Standing</h3>
+    <table>
+      <tbody>
+        {{#each allStanding}}
+        <tr>
+          <td>{{this.name}}</td>
+          <td><input type="number" data-standing-actor-id="{{this.id}}" value="{{this.value}}" style="width:4em"></td>
         </tr>
         {{/each}}
       </tbody>
