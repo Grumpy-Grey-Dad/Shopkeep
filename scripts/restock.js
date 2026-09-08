@@ -1,5 +1,6 @@
 import { MODULE_ID, ORIGIN } from "./constants.js";
 import { getShopConfig, setShopGold } from "./shop-data.js";
+import { toCopper } from "./currency.js";
 
 function matchesFilters(item, filters) {
   if (filters.types?.length && !filters.types.includes(item.type)) return false;
@@ -33,8 +34,14 @@ export async function getFilteredPool(config) {
   return pool;
 }
 
-function priceInGp(item) {
-  return item.system?.price?.valueInGP ?? item.system?.price?.value ?? 0;
+/**
+ * An item's price converted to exact whole copper. Deliberately doesn't
+ * use dnd5e's own price.valueInGP — that getter floors to a whole gold
+ * piece internally, which would silently zero out anything priced under
+ * 1 gp (a 7 cp item, say).
+ */
+function itemCostCopper(item) {
+  return toCopper(item.system?.price?.value ?? 0, item.system?.price?.denomination ?? "gp");
 }
 
 /**
@@ -103,4 +110,4 @@ export async function addManualItem(actor, sourceItem, quantity = 1) {
   return created;
 }
 
-export { priceInGp };
+export { itemCostCopper };

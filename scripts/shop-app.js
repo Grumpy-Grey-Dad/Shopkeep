@@ -1,15 +1,9 @@
-import { MODULE_ID, SHOP_TYPES, SUGGESTED_SERVICES } from "./constants.js";
-import {
-  getShopConfig,
-  setShopConfig,
-  getShopGold,
-  enableShop,
-  getPendingRequests,
-  getPendingOrders
-} from "./shop-data.js";
-import { restockShop, addManualItem, priceInGp } from "./restock.js";
-import { buyItem, sellItem, sellPayout } from "./transactions.js";
-import { useService, approveRequest, denyRequest, fulfillOrder } from "./services.js";
+import { MODULE_ID, SHOP_TYPES, SUGGESTED_SERVICES, CURRENCY_DENOMINATIONS } from "./constants.js";
+import { getShopConfig, setShopConfig, enableShop, getPendingRequests, getPendingOrders } from "./shop-data.js";
+import { restockShop, addManualItem, itemCostCopper } from "./restock.js";
+import { buyItem, sellItem, sellPayoutCopper } from "./transactions.js";
+import { useService, approveRequest, denyRequest, fulfillOrder, serviceCostCopper } from "./services.js";
+import { copperToDisplay, actorTotalCopper } from "./currency.js";
 
 const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 const { DragDrop, TextEditor } = foundry.applications.ux;
@@ -107,7 +101,11 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       service[serviceField] = el.checked;
     } else if (serviceField === "rollTableIds") {
       service[serviceField] = Array.from(el.selectedOptions).map((o) => o.value);
-    } else if (["cost", "dc", "leadTimeDays"].includes(serviceField)) {
+    } else if (serviceField === "cost.value") {
+      service.cost = { ...service.cost, value: Number(el.value) || 0 };
+    } else if (serviceField === "cost.denomination") {
+      service.cost = { ...service.cost, denomination: el.value };
+    } else if (["dc", "leadTimeDays"].includes(serviceField)) {
       service[serviceField] = Number(el.value) || 0;
     } else {
       service[serviceField] = el.value;
@@ -131,7 +129,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
         id: i.id,
         name: i.name,
         img: i.img,
-        price: priceInGp(i),
+        price: copperToDisplay(itemCostCopper(i)),
         quantity: i.system.quantity ?? 0,
         rarity: i.system.rarity || "",
         origin: i.getFlag(MODULE_ID, "origin") || "unknown"
@@ -156,7 +154,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
             id: i.id,
             name: i.name,
             img: i.img,
-            price: sellPayout(i, 1, config),
+            price: copperToDisplay(sellPayoutCopper(i, 1, config)),
             quantity: i.system.quantity ?? 1
           });
         }
@@ -207,7 +205,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       .map((s) => ({
         id: s.id,
         name: s.name,
-        cost: s.cost ?? 0,
+        cost: copperToDisplay(serviceCostCopper(s)),
         needsApproval: !!s.alwaysFlag || (s.resolutionType === "rolltable" && (s.rollTableIds?.length ?? 0) > 1)
       }));
 
@@ -218,7 +216,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       actor: this.actor,
       canManage,
       config,
-      gold: getShopGold(this.actor),
+      gold: copperToDisplay(actorTotalCopper(this.actor)),
       stock,
       itemTypes,
       rarities,
@@ -232,7 +230,8 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       services,
       visibleServices,
       pendingRequests,
-      pendingOrders
+      pendingOrders,
+      currencyDenominations: CURRENCY_DENOMINATIONS
     };
   }
 
@@ -367,7 +366,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
         id: foundry.utils.randomID(),
         name: "New Service",
         resolutionType: "instant",
-        cost: 0,
+        cost: { value: 0, denomination: "gp" },
         dc: 10,
         leadTimeDays: 1,
         alwaysFlag: false,
@@ -403,7 +402,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       .map((s) => ({
         id: foundry.utils.randomID(),
         resolutionType: "instant",
-        cost: 0,
+        cost: { value: 0, denomination: "gp" },
         dc: 10,
         leadTimeDays: 1,
         alwaysFlag: false,

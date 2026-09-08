@@ -1,26 +1,13 @@
 import { MODULE_ID, ORIGIN } from "./constants.js";
-import { getShopConfig, getShopGold, setShopGold } from "./shop-data.js";
-import { priceInGp } from "./restock.js";
+import { getShopConfig } from "./shop-data.js";
+import { itemCostCopper } from "./restock.js";
+import { canAfford, payCost, receivePayment, copperToDisplay } from "./currency.js";
 
-/**
- * Phase 1 simplification: all currency is treated in gp. A buyer's
- * available funds are read from system.currency.gp only — copper/silver/
- * platinum on the buyer's sheet are not consolidated or spent.
- */
-export function buyerGp(actor) {
-  return actor?.system?.currency?.gp ?? 0;
-}
-
-export async function setBuyerGp(actor, gp) {
-  return actor.update({ "system.currency.gp": Math.max(0, Math.round(gp)) });
-}
-
-/** What the shop actually pays for a player-sold item — shared by the
- *  transaction and by the UI, so the displayed price can never drift from
- *  what clicking Sell actually pays out. */
-export function sellPayout(item, quantity, config) {
+/** What the shop actually pays for a player-sold item, in whole copper —
+ *  shared by the display and the real transaction so they can't drift. */
+export function sellPayoutCopper(item, quantity, config) {
   const percent = config.sellBackPercent ?? 50;
-  return Math.floor((priceInGp(item) * quantity * percent) / 100);
+  return Math.round((itemCostCopper(item) * quantity * percent) / 100);
 }
 
 export async function buyItem(shopActor, buyerActor, itemId, quantity = 1) {
@@ -30,13 +17,13 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1) {
   const available = item.system.quantity ?? 0;
   if (quantity > available) return { ok: false, message: `Only ${available} in stock.` };
 
-  const cost = priceInGp(item) * quantity;
-  if (buyerGp(buyerActor) < cost) {
-    return { ok: false, message: `${buyerActor.name} can't afford this (needs ${cost} gp).` };
+  const cost = itemCostCopper(item) * quantity;
+  if (!canAfford(buyerActor, cost)) {
+    return { ok: false, message: `${buyerActor.name} can't afford this (needs ${copperToDisplay(cost)}).` };
   }
 
-  await setBuyerGp(buyerActor, buyerGp(buyerActor) - cost);
-  await setShopGold(shopActor, getShopGold(shopActor) + cost);
+  await payCost(buyerActor, cost);
+  await receivePayment(shopActor, cost);
 
   const data = item.toObject();
   data.system.quantity = quantity;
@@ -49,7 +36,7 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1) {
     await item.update({ "system.quantity": available - quantity });
   }
 
-  return { ok: true, message: `${buyerActor.name} bought ${quantity}x ${item.name} for ${cost} gp.` };
+  return { ok: true, message: `${buyerActor.name} bought ${quantity}x ${item.name} for ${copperToDisplay(cost)}.` };
 }
 
 export async function sellItem(shopActor, sellerActor, itemId, quantity = 1) {
@@ -67,14 +54,14 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1) {
   // D&D norm: shops pay a fraction of listed value buying from players.
   // Not in the original spec — added here as a sensible default, flagged
   // as an open tuning value (sellBackPercent, defaults 50).
-  const payout = sellPayout(item, quantity, config);
+  const payout = sellPayoutCopper(item, quantity, config);
 
-  if (getShopGold(shopActor) < payout) {
+  if (!canAfford(shopActor, payout)) {
     return { ok: false, message: "This shop can't afford to buy that right now." };
   }
 
-  await setShopGold(shopActor, getShopGold(shopActor) - payout);
-  await setBuyerGp(sellerActor, buyerGp(sellerActor) + payout);
+  await payCost(shopActor, payout);
+  await receivePayment(sellerActor, payout);
 
   const data = item.toObject();
   data.system.quantity = quantity;
@@ -88,5 +75,8 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1) {
     await item.update({ "system.quantity": available - quantity });
   }
 
-  return { ok: true, message: `${sellerActor.name} sold ${quantity}x ${item.name} for ${payout} gp.` };
+  return {
+    ok: true,
+    message: `${sellerActor.name} sold ${quantity}x ${item.name} for ${copperToDisplay(payout)}.`
+  };
 }

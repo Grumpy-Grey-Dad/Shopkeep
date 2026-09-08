@@ -1,11 +1,13 @@
 import { MODULE_ID } from "./constants.js";
 import { ShopApp } from "./shop-app.js";
+import { copperToDisplay } from "./currency.js";
 
 Hooks.once("init", () => {
   console.log(`${MODULE_ID} | Initializing`);
   game.modules.get(MODULE_ID).api = { ShopApp };
   Handlebars.registerHelper("includes", (arr, val) => Array.isArray(arr) && arr.includes(val));
   Handlebars.registerHelper("eq", (a, b) => String(a) === String(b));
+  Handlebars.registerHelper("formatCopper", (copper) => copperToDisplay(copper));
 
   // Registers ShopApp as a selectable sheet for NPC actors (via the
   // actor's own "Configure Sheet" control). This is what lets a player

@@ -12,7 +12,7 @@
     <img src="{{actor.img}}" width="48" height="48">
     <div class="vs-summary-text">
       <h2>{{actor.name}}</h2>
-      <p>Gold: {{gold}} gp</p>
+      <p>Gold: {{gold}}</p>
     </div>
     {{#if canManage}}
     <button type="button" data-action="restock">Restock</button>
@@ -45,7 +45,7 @@
         <tr>
           <td><img src="{{this.img}}" width="24" height="24"></td>
           <td>{{this.name}} {{#if this.rarity}}<em>({{this.rarity}})</em>{{/if}}</td>
-          <td>{{this.price}} gp</td>
+          <td>{{this.price}}</td>
           <td>{{this.quantity}}</td>
           {{#if ../canManage}}<td>{{this.origin}}</td>{{/if}}
           <td>
@@ -69,7 +69,7 @@
         <tr>
           <td><img src="{{this.img}}" width="24" height="24"></td>
           <td>{{this.name}}</td>
-          <td>{{this.price}} gp</td>
+          <td>{{this.price}}</td>
           <td><button type="button" data-action="sell" data-item-id="{{this.id}}">Sell</button></td>
         </tr>
         {{/each}}
@@ -86,7 +86,7 @@
         {{#each visibleServices}}
         <tr>
           <td>{{this.name}}{{#if this.needsApproval}} <span class="vs-hint">(needs GM approval)</span>{{/if}}</td>
-          <td>{{this.cost}} gp</td>
+          <td>{{this.cost}}</td>
           <td><button type="button" data-action="useService" data-service-id="{{this.id}}">Use</button></td>
         </tr>
         {{/each}}
@@ -103,7 +103,7 @@
       <tbody>
         {{#each pendingRequests}}
         <tr>
-          <td>{{this.actorName}} — {{this.serviceName}} ({{this.cost}} gp)</td>
+          <td>{{this.actorName}} — {{this.serviceName}} ({{formatCopper this.costCopper}})</td>
           <td>
             <button type="button" data-action="approveRequest" data-request-id="{{this.id}}">Approve</button>
             <button type="button" data-action="denyRequest" data-request-id="{{this.id}}">Deny</button>
@@ -166,7 +166,14 @@
                 <option value="rolltable" {{#if (eq this.resolutionType "rolltable")}}selected{{/if}}>Roll Table</option>
               </select>
             </td>
-            <td><input type="number" data-service-field="cost" data-service-id="{{this.id}}" value="{{this.cost}}" style="width:4em"></td>
+            <td>
+              <input type="number" data-service-field="cost.value" data-service-id="{{this.id}}" value="{{this.cost.value}}" style="width:3.5em">
+              <select data-service-field="cost.denomination" data-service-id="{{this.id}}">
+                {{#each ../currencyDenominations}}
+                <option value="{{this}}" {{#if (eq this ../cost.denomination)}}selected{{/if}}>{{this}}</option>
+                {{/each}}
+              </select>
+            </td>
             <td><input type="number" data-service-field="dc" data-service-id="{{this.id}}" value="{{this.dc}}" style="width:3em"></td>
             <td><input type="number" data-service-field="leadTimeDays" data-service-id="{{this.id}}" value="{{this.leadTimeDays}}" style="width:3em"></td>
             <td>
@@ -187,7 +194,7 @@
       <button type="button" data-action="addService">Add Service</button>
     </fieldset>
 
-    <fieldset>
+    <fieldset class="vs-compendium-list">
       <legend>Source Compendiums</legend>
       {{#each packs}}
       <label class="vs-check"><input type="checkbox" name="compendiums" value="{{this.id}}" {{#if this.checked}}checked{{/if}}> {{this.label}} <span class="vs-hint">— {{this.source}}</span></label>

@@ -1,17 +1,22 @@
-import { MODULE_ID } from "./constants.js";
 import {
   getShopConfig,
-  getShopGold,
-  setShopGold,
   getPendingRequests,
   setPendingRequests,
   getPendingOrders,
   setPendingOrders
 } from "./shop-data.js";
-import { buyerGp, setBuyerGp } from "./transactions.js";
+import { toCopper, copperToDisplay, canAfford, payCost, receivePayment } from "./currency.js";
 
 function findService(config, serviceId) {
   return config.services.find((s) => s.id === serviceId);
+}
+
+function serviceCostCopper(service) {
+  // Services created before cost became {value, denomination} stored a
+  // bare gp number — treat that shape as gp rather than silently reading
+  // it as 0 (a service.cost?.value on a plain number is undefined).
+  if (typeof service.cost === "number") return toCopper(service.cost, "gp");
+  return toCopper(service.cost?.value ?? 0, service.cost?.denomination ?? "gp");
 }
 
 function needsGmAttention(service) {
@@ -33,29 +38,31 @@ async function notifyActorOwner(actor, content) {
 
 /** Executes a service that's already cleared any GM-approval requirement. */
 async function resolveService(shopActor, actorActor, service) {
+  const cost = serviceCostCopper(service);
+
   if (service.resolutionType === "rolltable") {
     const tableId = service.rollTableIds?.[0];
     const table = tableId ? game.tables.get(tableId) : null;
     if (!table) {
       return { ok: false, message: `${service.name} has no valid Roll Table configured.` };
     }
-    if (buyerGp(actorActor) < (service.cost ?? 0)) {
-      return { ok: false, message: `${actorActor.name} can't afford ${service.name} (needs ${service.cost} gp).` };
+    if (!canAfford(actorActor, cost)) {
+      return { ok: false, message: `${actorActor.name} can't afford ${service.name} (needs ${copperToDisplay(cost)}).` };
     }
-    if (service.cost) {
-      await setBuyerGp(actorActor, buyerGp(actorActor) - service.cost);
-      await setShopGold(shopActor, getShopGold(shopActor) + service.cost);
+    if (cost) {
+      await payCost(actorActor, cost);
+      await receivePayment(shopActor, cost);
     }
     await table.draw({ displayChat: true });
     return { ok: true, message: `${actorActor.name} used ${service.name}.` };
   }
 
-  if (buyerGp(actorActor) < (service.cost ?? 0)) {
-    return { ok: false, message: `${actorActor.name} can't afford ${service.name} (needs ${service.cost} gp).` };
+  if (!canAfford(actorActor, cost)) {
+    return { ok: false, message: `${actorActor.name} can't afford ${service.name} (needs ${copperToDisplay(cost)}).` };
   }
-  if (service.cost) {
-    await setBuyerGp(actorActor, buyerGp(actorActor) - service.cost);
-    await setShopGold(shopActor, getShopGold(shopActor) + service.cost);
+  if (cost) {
+    await payCost(actorActor, cost);
+    await receivePayment(shopActor, cost);
   }
 
   if (service.resolutionType === "instant") {
@@ -114,7 +121,7 @@ export async function useService(shopActor, actorActor, serviceId) {
       serviceName: service.name,
       actorId: actorActor.id,
       actorName: actorActor.name,
-      cost: service.cost ?? 0,
+      costCopper: serviceCostCopper(service),
       requestedAt: Date.now()
     });
     await setPendingRequests(shopActor, requests);
@@ -143,7 +150,12 @@ export async function approveRequest(shopActor, requestId, chosenTableId = null)
   let service = findService(config, request.serviceId);
   // Fall back to the request's own snapshot if the service was edited/removed since.
   if (!service) {
-    service = { id: request.serviceId, name: request.serviceName, cost: request.cost, resolutionType: "instant" };
+    service = {
+      id: request.serviceId,
+      name: request.serviceName,
+      cost: { value: request.costCopper, denomination: "cp" },
+      resolutionType: "instant"
+    };
   }
   if (chosenTableId) {
     service = { ...service, rollTableIds: [chosenTableId] };
@@ -195,3 +207,5 @@ export async function fulfillOrder(shopActor, orderId) {
   await setPendingOrders(shopActor, orders.filter((o) => o.id !== orderId));
   return { ok: true, message: `Marked ${order.serviceName} fulfilled.` };
 }
+
+export { serviceCostCopper };
