@@ -1,6 +1,7 @@
 import { MODULE_ID } from "./constants.js";
 import { ShopApp } from "./shop-app.js";
 import { copperToDisplay } from "./currency.js";
+import { registerPatrolIntegration } from "./patrol-integration.js";
 
 Hooks.once("init", () => {
   console.log(`${MODULE_ID} | Initializing`);
@@ -20,6 +21,14 @@ Hooks.once("init", () => {
     label: "Shop",
     makeDefault: false
   });
+});
+
+// Registering the custom "Suspected" status effect has to wait until
+// "ready" — dnd5e rebuilds CONFIG.statusEffects wholesale after "init"
+// runs, which would silently discard an entry pushed too early (caught
+// live: a push during "init" was gone by the time theft.js needed it).
+Hooks.once("ready", () => {
+  registerPatrolIntegration();
 });
 
 /**

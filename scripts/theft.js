@@ -2,6 +2,7 @@ import { MODULE_ID } from "./constants.js";
 import { getShopConfig, adjustStanding, getFlaggedEvents, setFlaggedEvents } from "./shop-data.js";
 import { notifyGMs } from "./notify.js";
 import { applyImmediateConsequence } from "./consequence.js";
+import { markSuspected } from "./patrol-integration.js";
 
 function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
@@ -44,8 +45,9 @@ export async function attemptTheft(shopActor, actorActor, itemId) {
     await adjustStanding(shopActor, actorActor.id, config.standingPerFailedTheft);
 
     const events = getFlaggedEvents(shopActor);
+    const eventId = foundry.utils.randomID();
     events.push({
-      id: foundry.utils.randomID(),
+      id: eventId,
       actorId: actorActor.id,
       actorName: actorActor.name,
       itemName: targetItem.name,
@@ -54,6 +56,12 @@ export async function attemptTheft(shopActor, actorActor, itemId) {
       createdAt: Date.now()
     });
     await setFlaggedEvents(shopActor, events);
+
+    // Optional Patrol integration — a no-op if Patrol isn't installed.
+    // Marks the thief as "suspected" so a nearby patrol route that later
+    // spots them can escalate this specific flagged event into a
+    // confirmed sighting instead of a rumor the GM has to take on faith.
+    await markSuspected(shopActor, actorActor, eventId, config.suspectedWindowSeconds);
 
     await roll.toMessage({
       speaker: { alias: shopActor.name },

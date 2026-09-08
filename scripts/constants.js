@@ -57,7 +57,11 @@ export const DEFAULT_SHOP_CONFIG = {
   guardActorId: "",
   // "Standing craters" on hostile — this is a hard floor set on failure,
   // not a delta stacked on top of the ordinary standingPerFailedTheft hit.
-  hostileStandingFloor: -20
+  hostileStandingFloor: -20,
+  // How long a failed thief stays "suspected" for the optional Patrol
+  // integration — real seconds, not combat rounds, since a theft attempt
+  // usually isn't happening inside a tracked combat encounter at all.
+  suspectedWindowSeconds: 60
 };
 
 export const THEFT_CONSEQUENCE_MODES = [

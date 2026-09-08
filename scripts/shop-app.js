@@ -298,7 +298,8 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       standing,
       allStanding,
       guardActors,
-      theftConsequenceModes: THEFT_CONSEQUENCE_MODES
+      theftConsequenceModes: THEFT_CONSEQUENCE_MODES,
+      patrolActive: !!game.modules.get("patrol")?.active
     };
   }
 
@@ -415,7 +416,8 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       standingPerFailedTheft: Number(getValue("standingPerFailedTheft")) || 0,
       theftConsequenceMode: getValue("theftConsequenceMode") || "merchant",
       guardActorId: getValue("guardActorId") || "",
-      hostileStandingFloor: Number(getValue("hostileStandingFloor")) || 0
+      hostileStandingFloor: Number(getValue("hostileStandingFloor")) || 0,
+      suspectedWindowSeconds: Number(getValue("suspectedWindowSeconds")) || 60
     });
 
     ui.notifications.info("Shop configuration saved.");

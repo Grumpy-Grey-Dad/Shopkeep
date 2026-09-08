@@ -153,7 +153,10 @@
       <tbody>
         {{#each flaggedEvents}}
         <tr>
-          <td>{{this.actorName}} was caught stealing {{this.itemName}} (rolled {{this.rollTotal}} vs DC {{this.dc}}) — narrate the consequence.</td>
+          <td>
+            {{this.actorName}} was caught stealing {{this.itemName}} (rolled {{this.rollTotal}} vs DC {{this.dc}}) — narrate the consequence.
+            {{#if this.patrolConfirmed}}<br><strong>Confirmed sighting:</strong> {{this.patrolGuardName}} actually spotted them.{{/if}}
+          </td>
           <td>
             {{#if this.showSpawnGuard}}<button type="button" data-action="spawnGuard" data-actor-id="{{this.actorId}}">Spawn Guard</button>{{/if}}
             <button type="button" data-action="acknowledgeFlaggedEvent" data-event-id="{{this.id}}">Acknowledge</button>
@@ -331,6 +334,11 @@
       </label>
       <label>Standing floor on Hostile mode<input type="number" name="hostileStandingFloor" value="{{config.hostileStandingFloor}}"></label>
       <p class="vs-hint">Merchant/Hostile modes apply automatically the instant a theft fails. Guard mode instead adds a "Spawn Guard" button to the matching Flagged Event — you place the token and start combat when you're ready; running the fight itself is on you.</p>
+      <label>Patrol "suspected" window (seconds)<input type="number" name="suspectedWindowSeconds" value="{{config.suspectedWindowSeconds}}"></label>
+      <p class="vs-hint">
+        Optional integration with the free Patrol module. If a caught thief is spotted by a patrol route within this window of fleeing, the Flagged Event above is upgraded to a confirmed sighting instead of a rumor.
+        {{#if patrolActive}}<strong>Patrol is active in this world.</strong>{{else}}Patrol isn't installed/active — this setting has no effect right now.{{/if}}
+      </p>
     </fieldset>
 
     <fieldset>
