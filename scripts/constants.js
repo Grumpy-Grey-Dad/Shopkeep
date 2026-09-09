@@ -30,10 +30,11 @@ export const DEFAULT_SHOP_CONFIG = {
   // single purchase does.
   standingPerPurchase: 0.25,
   // Awarded the first time a player's own character opens this shop's
-  // window in a given app instance lifetime — see ShopApp#_onFirstRender.
-  // No calendar/session system exists to define a "day" or a "visit" more
-  // rigorously than that (same limitation noted elsewhere re: haggle
-  // attempt resets), so open-the-window is the visit boundary.
+  // window on a given server connection (socket session) — see
+  // ShopApp#_onFirstRender / shop-data.js#recordVisitSession. Closing and
+  // reopening the window doesn't re-trigger it; only an actual reconnect
+  // (reload, relaunching Foundry for the next game session) does. No
+  // calendar system exists to define a "day" more rigorously than that.
   standingPerVisit: 1,
   standingPerHaggleSuccess: 2,
   // Applied whenever a haggle attempt isn't the player's first this visit,

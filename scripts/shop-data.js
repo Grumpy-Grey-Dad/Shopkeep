@@ -125,6 +125,27 @@ export async function adjustStanding(actor, playerActorId, delta) {
   return setStanding(actor, playerActorId, getStanding(actor, playerActorId) + delta);
 }
 
+/**
+ * Which server connection ("visit") each player last got their visit
+ * standing bump for at this shop: {[playerActorId]: socketSessionId}.
+ * Keyed by socket session rather than app-instance so closing and
+ * reopening the shop window doesn't farm repeat bonuses — the id only
+ * changes when the player's client actually reconnects (reload, relaunch
+ * for the next game session), which is the closest thing to a real
+ * "visit" boundary without a calendar/session system.
+ */
+export function getVisitSessions(actor) {
+  return actor?.getFlag(MODULE_ID, "visitSessions") ?? {};
+}
+
+/** Records this session as visited; returns true only if it's a new one (i.e. a bump is owed). */
+export async function recordVisitSession(actor, playerActorId, sessionId) {
+  const sessions = getVisitSessions(actor);
+  if (sessions[playerActorId] === sessionId) return false;
+  await actor.setFlag(MODULE_ID, "visitSessions", { ...sessions, [playerActorId]: sessionId });
+  return true;
+}
+
 export const STANDING_TIER_RANK = { "": 0, friendly: 1, cooperative: 2 };
 
 /**

@@ -16,6 +16,7 @@ import {
   setStanding,
   adjustStanding,
   getStandingTier,
+  recordVisitSession,
   STANDING_TIER_RANK,
   resetHaggleAttempts,
   getBannedActorIds,
@@ -103,14 +104,17 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
   }
 
   /**
-   * Fires exactly once per app instance, before the first _onRender — the
-   * natural "opened the shop" boundary, unlike _onRender which also fires
-   * on every subsequent this.render() from a Buy/Sell/etc. click. A
-   * player's own actingActor is already resolved by the time this runs
-   * (set in the constructor / _prepareContext), so this only awards a
-   * visit for an actual player opening their own character's shop window
-   * — never for a GM's management console, or a GM testing as a picked
-   * character (that selection itself triggers a normal, non-first render).
+   * Fires once per app instance, before the first _onRender — the
+   * natural "opened the shop" check point. Awards the visit bump only if
+   * this player's socket session (game.socket.session.sessionId) hasn't
+   * already been credited at this shop — closing and reopening the
+   * window within the same connection doesn't re-trigger it, only an
+   * actual reconnect (reload, relaunching Foundry for the next game
+   * session) does. A player's own actingActor is already resolved by the
+   * time this runs (set in the constructor / _prepareContext), so this
+   * only fires for an actual player opening their own character's shop
+   * window — never for a GM's management console, or a GM testing as a
+   * picked character (that selection triggers a normal, non-first render).
    */
   async _onFirstRender(context, options) {
     await super._onFirstRender(context, options);
@@ -119,6 +123,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     if (!actingActor) return;
     const config = getShopConfig(this.actor);
     if (!config.standingPerVisit) return;
+    // Falls back to game.user.id if the socket session isn't available for
+    // some reason — safer to under-grant (at most once ever) than to leave
+    // the visit bump farmable.
+    const sessionId = game.socket?.session?.sessionId ?? game.socket?.id ?? game.user.id;
+    const isNewVisit = await recordVisitSession(this.actor, actingActor.id, sessionId);
+    if (!isNewVisit) return;
     await adjustStanding(this.actor, actingActor.id, config.standingPerVisit);
     this.render();
   }
