@@ -125,6 +125,26 @@ export async function adjustStanding(actor, playerActorId, delta) {
   return setStanding(actor, playerActorId, getStanding(actor, playerActorId) + delta);
 }
 
+export const STANDING_TIER_RANK = { "": 0, friendly: 1, cooperative: 2 };
+
+/**
+ * Passive demeanor tier for a given standing value — drives both the
+ * merchant's displayed attitude and the automatic price break on ordinary
+ * (non-haggled) buy/sell. Independent of the ban/hostile system: a banned
+ * actor can still numerically sit in "Cooperative" range (e.g. after a GM
+ * manually edits the number) without that lifting the ban — isBanned is
+ * checked separately wherever it matters.
+ */
+export function getStandingTier(config, standing) {
+  if (standing >= config.standingCooperativeThreshold) {
+    return { key: "cooperative", label: "Cooperative", discountPercent: config.standingCooperativeDiscountPercent };
+  }
+  if (standing >= config.standingFriendlyThreshold) {
+    return { key: "friendly", label: "Friendly", discountPercent: config.standingFriendlyDiscountPercent };
+  }
+  return { key: "", label: "Neutral", discountPercent: 0 };
+}
+
 /**
  * How many times each player has haggled at this shop since the GM last
  * reset it. There's no way for the module to know when a "visit" starts

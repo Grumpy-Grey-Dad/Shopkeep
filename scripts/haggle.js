@@ -5,7 +5,9 @@ import {
   setPendingRequests,
   adjustStanding,
   recordHaggleAttempt,
-  isBanned
+  isBanned,
+  getStanding,
+  getStandingTier
 } from "./shop-data.js";
 import { itemCostCopper } from "./restock.js";
 import { toCopper } from "./currency.js";
@@ -60,15 +62,22 @@ async function performHaggle(shopActor, actorActor, item, direction, config) {
     return { ok: true, message: `Haggle failed (rolled ${roll.total} vs DC ${dc}) — no discount.` };
   }
 
+  // The passive demeanor-tier discount stacks additively on top of a
+  // successful haggle — good standing and a good roll both pay off. Read
+  // standing after the deltas above so a haggle that itself crosses a
+  // tier threshold is credited immediately.
+  const tierDiscount = getStandingTier(config, getStanding(shopActor, actorActor.id)).discountPercent;
+  const totalDiscountPercent = config.haggleDiscountPercent + tierDiscount;
+
   // false = don't also award the ordinary per-purchase standing bump;
   // the haggle success/repeat deltas above already cover this transaction.
   const result =
     direction === "buy"
-      ? await buyItem(shopActor, actorActor, item.id, 1, config.haggleDiscountPercent, false)
-      : await sellItem(shopActor, actorActor, item.id, 1, config.haggleDiscountPercent);
+      ? await buyItem(shopActor, actorActor, item.id, 1, totalDiscountPercent, false)
+      : await sellItem(shopActor, actorActor, item.id, 1, totalDiscountPercent);
 
   const verb = direction === "buy" ? "off" : "extra";
-  return { ok: result.ok, message: `Haggle succeeded (${config.haggleDiscountPercent}% ${verb})! ${result.message}` };
+  return { ok: result.ok, message: `Haggle succeeded (${totalDiscountPercent}% ${verb})! ${result.message}` };
 }
 
 /** Entry point for a player/GM clicking "Haggle" on a stock or sellable item. */

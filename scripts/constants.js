@@ -25,13 +25,31 @@ export const DEFAULT_SHOP_CONFIG = {
   typeLock: false,
   services: [],
   // Standing point values are an explicitly open tuning value per the
-  // spec — these are starting defaults, not fixed rules.
-  standingPerPurchase: 1,
+  // spec — these are starting defaults, not fixed rules. Kept small
+  // relative to standingPerVisit below: showing up matters more than any
+  // single purchase does.
+  standingPerPurchase: 0.25,
+  // Awarded the first time a player's own character opens this shop's
+  // window in a given app instance lifetime — see ShopApp#_onFirstRender.
+  // No calendar/session system exists to define a "day" or a "visit" more
+  // rigorously than that (same limitation noted elsewhere re: haggle
+  // attempt resets), so open-the-window is the visit boundary.
+  standingPerVisit: 1,
   standingPerHaggleSuccess: 2,
   // Applied whenever a haggle attempt isn't the player's first this visit,
   // regardless of whether that attempt succeeds or fails (the spec states
   // this as a consequence of the repeat attempt itself, not of failing).
   standingPerHaggleRepeat: -1,
+  // Passive demeanor tiers: at or above each threshold, the merchant is
+  // considered Friendly/Cooperative — a small automatic discount applies
+  // to ordinary (non-haggled) buy/sell, and stacks additively on top of a
+  // successful haggle's own discount. Purely a label + price effect, not
+  // a token disposition change (that stays reserved for the hostile theft
+  // consequence, so it doesn't fight with a GM's own token setup).
+  standingFriendlyThreshold: 15,
+  standingFriendlyDiscountPercent: 10,
+  standingCooperativeThreshold: 35,
+  standingCooperativeDiscountPercent: 15,
   haggleSkill: "per",
   haggleDC: 15,
   // % off the listed price on a successful buy-haggle, or % on top of the

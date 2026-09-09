@@ -36,22 +36,35 @@
     <p class="vs-hint">You don't have a character assigned — ask your GM to set one in Player Configuration.</p>
     {{/if}}
     {{#if actingActor}}
-    <p class="vs-hint">Standing with {{actor.name}}: <strong>{{standing}}</strong></p>
+    <p class="vs-hint">Standing with {{actor.name}}: <strong>{{standing}}</strong> ({{standingTierLabel}})</p>
     {{/if}}
   </section>
 
   <section class="vs-stock vs-drop-zone">
     <h3>Stock {{#if canManage}}<span class="vs-hint">(GM: drag an item here to add it manually)</span>{{/if}}</h3>
     <table>
-      <thead><tr><th></th><th>Name</th><th>Price</th><th>Qty</th>{{#if canManage}}<th>Origin</th>{{/if}}<th></th></tr></thead>
+      <thead><tr><th></th><th>Name</th><th>Price</th><th>Qty</th>{{#if canManage}}<th>Origin</th><th>Requires</th>{{/if}}<th></th></tr></thead>
       <tbody>
         {{#each stock}}
         <tr>
           <td><img src="{{this.img}}" width="24" height="24"></td>
-          <td>{{this.name}} {{#if this.rarity}}<em>({{this.rarity}})</em>{{/if}}</td>
+          <td>
+            {{this.name}} {{#if this.rarity}}<em>({{this.rarity}})</em>{{/if}}
+            {{#if this.requiredTier}}{{#unless ../canManage}}<span class="vs-hint">({{this.requiredTier}} stock)</span>{{/unless}}{{/if}}
+          </td>
           <td>{{this.price}}</td>
           <td>{{this.quantity}}</td>
-          {{#if ../canManage}}<td>{{this.origin}}</td>{{/if}}
+          {{#if ../canManage}}
+          <td>{{this.origin}}</td>
+          <td>
+            <select data-stock-tier-item-id="{{this.id}}">
+              {{#each ../standingTierOptions}}
+              <option value="{{this.key}}" {{#if (eq this.key ../requiredTier)}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+            {{#if this.locked}}<span class="vs-hint">(locked for current player)</span>{{/if}}
+          </td>
+          {{/if}}
           <td>
             <button type="button" data-action="buy" data-item-id="{{this.id}}">Buy</button>
             <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="buy">Haggle</button>
@@ -60,7 +73,7 @@
           </td>
         </tr>
         {{else}}
-        <tr><td colspan="6"><em>No stock yet{{#if ../canManage}} — configure and restock below{{/if}}.</em></td></tr>
+        <tr><td colspan="7"><em>No stock yet{{#if ../canManage}} — configure and restock below{{/if}}.</em></td></tr>
         {{/each}}
       </tbody>
     </table>
@@ -176,7 +189,8 @@
         {{#each allStanding}}
         <tr>
           <td>{{this.name}}{{#if this.banned}} <span class="vs-hint">(banned)</span>{{/if}}</td>
-          <td><input type="number" data-standing-actor-id="{{this.id}}" value="{{this.value}}" style="width:4em"></td>
+          <td><input type="number" step="0.25" data-standing-actor-id="{{this.id}}" value="{{this.value}}" style="width:4em"></td>
+          <td>{{this.tierLabel}}</td>
           <td>{{#if this.banned}}<button type="button" data-action="unbanActor" data-actor-id="{{this.id}}">Lift Ban</button>{{/if}}</td>
         </tr>
         {{/each}}
@@ -277,6 +291,19 @@
       <label>Target Stock Count<input type="number" name="targetStockCount" value="{{config.targetStockCount}}"></label>
       <label>Max Qty per Item<input type="number" name="maxQuantityPerItem" value="{{config.maxQuantityPerItem}}"></label>
       <label>Sell-back % (what the shop pays for player-sold goods)<input type="number" name="sellBackPercent" value="{{config.sellBackPercent}}"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Standing &amp; Reputation</legend>
+      <label>Standing per ordinary purchase<input type="number" step="0.25" name="standingPerPurchase" value="{{config.standingPerPurchase}}"></label>
+      <label>Standing per visit (first time a player opens this shop's window)<input type="number" step="0.25" name="standingPerVisit" value="{{config.standingPerVisit}}"></label>
+      <label>Standing per successful haggle<input type="number" step="0.25" name="standingPerHaggleSuccess" value="{{config.standingPerHaggleSuccess}}"></label>
+      <label>Standing per repeat haggle attempt (same visit, win or lose)<input type="number" step="0.25" name="standingPerHaggleRepeat" value="{{config.standingPerHaggleRepeat}}"></label>
+      <p class="vs-hint">At or above these thresholds, the merchant's demeanor and prices shift automatically — even without haggling. The tier discount also stacks on top of a successful haggle's own discount.</p>
+      <label>Friendly threshold<input type="number" name="standingFriendlyThreshold" value="{{config.standingFriendlyThreshold}}" style="width:4em"></label>
+      <label>Friendly discount %<input type="number" name="standingFriendlyDiscountPercent" value="{{config.standingFriendlyDiscountPercent}}" style="width:4em"></label>
+      <label>Cooperative threshold<input type="number" name="standingCooperativeThreshold" value="{{config.standingCooperativeThreshold}}" style="width:4em"></label>
+      <label>Cooperative discount %<input type="number" name="standingCooperativeDiscountPercent" value="{{config.standingCooperativeDiscountPercent}}" style="width:4em"></label>
     </fieldset>
 
     <fieldset>

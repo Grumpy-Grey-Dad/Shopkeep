@@ -14,6 +14,9 @@ import {
   getFlaggedEvents,
   getStanding,
   setStanding,
+  adjustStanding,
+  getStandingTier,
+  STANDING_TIER_RANK,
   resetHaggleAttempts,
   getBannedActorIds,
   unbanActor
@@ -99,6 +102,27 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     return `Shop: ${this.actor.name}`;
   }
 
+  /**
+   * Fires exactly once per app instance, before the first _onRender — the
+   * natural "opened the shop" boundary, unlike _onRender which also fires
+   * on every subsequent this.render() from a Buy/Sell/etc. click. A
+   * player's own actingActor is already resolved by the time this runs
+   * (set in the constructor / _prepareContext), so this only awards a
+   * visit for an actual player opening their own character's shop window
+   * — never for a GM's management console, or a GM testing as a picked
+   * character (that selection itself triggers a normal, non-first render).
+   */
+  async _onFirstRender(context, options) {
+    await super._onFirstRender(context, options);
+    if (game.user.isGM) return;
+    const actingActor = this.actingActorId ? game.actors.get(this.actingActorId) : null;
+    if (!actingActor) return;
+    const config = getShopConfig(this.actor);
+    if (!config.standingPerVisit) return;
+    await adjustStanding(this.actor, actingActor.id, config.standingPerVisit);
+    this.render();
+  }
+
   async _onRender(context, options) {
     await super._onRender(context, options);
     this.#dragDrop.bind(this.element);
@@ -118,12 +142,26 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     this.element.querySelectorAll("[data-standing-actor-id]").forEach((el) => {
       el.addEventListener("change", (ev) => this._onStandingChange(ev));
     });
+
+    this.element.querySelectorAll("[data-stock-tier-item-id]").forEach((el) => {
+      el.addEventListener("change", (ev) => this._onStockTierChange(ev));
+    });
   }
 
   async _onStandingChange(event) {
     if (!game.user.isGM) return;
     const el = event.currentTarget;
     await setStanding(this.actor, el.dataset.standingActorId, Number(el.value) || 0);
+    this.render();
+  }
+
+  async _onStockTierChange(event) {
+    if (!game.user.isGM) return;
+    const el = event.currentTarget;
+    const item = this.actor.items.get(el.dataset.stockTierItemId);
+    if (!item) return;
+    if (el.value) await item.setFlag(MODULE_ID, "requiredTier", el.value);
+    else await item.unsetFlag(MODULE_ID, "requiredTier");
     this.render();
   }
 
@@ -163,20 +201,10 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     // would get GM controls the moment they're able to transact.
     const canManage = game.user.isGM;
 
-    const stock = this.actor.items.contents
-      .map((i) => ({
-        id: i.id,
-        name: i.name,
-        img: i.img,
-        price: copperToDisplay(itemCostCopper(i)),
-        quantity: i.system.quantity ?? 0,
-        rarity: i.system.rarity || "",
-        origin: i.getFlag(MODULE_ID, "origin") || "unknown"
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
     // GMs/owners pick who they're acting as; a regular player always acts
     // as their own assigned character — no dropdown, no impersonation.
+    // Resolved before the stock list below since gated stock needs to
+    // know the acting player's own standing tier to filter by.
     let actingActor;
     if (canManage) {
       actingActor = this.actingActorId ? game.actors.get(this.actingActorId) : null;
@@ -184,6 +212,40 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       actingActor = game.user.character ?? null;
       this.actingActorId = actingActor?.id ?? null;
     }
+
+    const currentStanding = actingActor ? getStanding(this.actor, actingActor.id) : 0;
+    const currentTier = getStandingTier(config, currentStanding);
+
+    // Shown price already reflects the acting player's own passive tier
+    // discount (if any) — otherwise a Friendly/Cooperative customer would
+    // see a listed price that's simply wrong for what they're about to
+    // pay, since that discount applies automatically without them having
+    // to haggle for it.
+    const tierDiscountedCopper = (baseCopper) =>
+      Math.round((baseCopper * (100 - currentTier.discountPercent)) / 100);
+    const tierPremiumCopper = (baseCopper) =>
+      Math.round((baseCopper * (100 + currentTier.discountPercent)) / 100);
+
+    const stock = this.actor.items.contents
+      .map((i) => {
+        const requiredTier = i.getFlag(MODULE_ID, "requiredTier") || "";
+        return {
+          id: i.id,
+          name: i.name,
+          img: i.img,
+          price: copperToDisplay(tierDiscountedCopper(itemCostCopper(i))),
+          quantity: i.system.quantity ?? 0,
+          rarity: i.system.rarity || "",
+          origin: i.getFlag(MODULE_ID, "origin") || "unknown",
+          requiredTier,
+          // GMs always see gated stock (with a control to manage the
+          // gate); a player only sees it once their own standing tier
+          // meets it.
+          locked: !!requiredTier && STANDING_TIER_RANK[requiredTier] > STANDING_TIER_RANK[currentTier.key]
+        };
+      })
+      .filter((i) => canManage || !i.locked)
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     const sellable = [];
     if (actingActor) {
@@ -193,7 +255,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
             id: i.id,
             name: i.name,
             img: i.img,
-            price: copperToDisplay(sellPayoutCopper(i, 1, config)),
+            price: copperToDisplay(tierPremiumCopper(sellPayoutCopper(i, 1, config))),
             quantity: i.system.quantity ?? 1
           });
         }
@@ -260,15 +322,20 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
     // The acting player's own standing with this merchant — never anyone
     // else's. GMs additionally get a full roster to review/adjust.
-    const standing = actingActor ? getStanding(this.actor, actingActor.id) : null;
+    const standing = actingActor ? currentStanding : null;
+    const standingTierLabel = actingActor ? currentTier.label : null;
     const bannedActorIds = getBannedActorIds(this.actor);
     const allStanding = canManage
-      ? playerActors.map((a) => ({
-          id: a.id,
-          name: a.name,
-          value: getStanding(this.actor, a.id),
-          banned: bannedActorIds.includes(a.id)
-        }))
+      ? playerActors.map((a) => {
+          const value = getStanding(this.actor, a.id);
+          return {
+            id: a.id,
+            name: a.name,
+            value,
+            tierLabel: getStandingTier(config, value).label,
+            banned: bannedActorIds.includes(a.id)
+          };
+        })
       : [];
 
     const guardActors = canManage ? game.actors.filter((a) => a.type === "npc").map((a) => ({ id: a.id, name: a.name })) : [];
@@ -296,6 +363,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       flaggedEvents,
       currencyDenominations: CURRENCY_DENOMINATIONS,
       standing,
+      standingTierLabel,
+      standingTierOptions: [
+        { key: "", label: "None" },
+        { key: "friendly", label: "Friendly" },
+        { key: "cooperative", label: "Cooperative" }
+      ],
       allStanding,
       guardActors,
       theftConsequenceModes: THEFT_CONSEQUENCE_MODES,
@@ -344,7 +417,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
           : "You don't have a character assigned — ask your GM to set one in Player Configuration."
       );
     }
-    const result = await buyItem(this.actor, buyer, itemId, 1);
+    const config = getShopConfig(this.actor);
+    const discountPercent = getStandingTier(config, getStanding(this.actor, buyer.id)).discountPercent;
+    const result = await buyItem(this.actor, buyer, itemId, 1, discountPercent);
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
   }
@@ -368,7 +443,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       if (!confirmed) return;
     }
 
-    const result = await sellItem(this.actor, seller, itemId, 1);
+    const config = getShopConfig(this.actor);
+    const premiumPercent = getStandingTier(config, getStanding(this.actor, seller.id)).discountPercent;
+    const result = await sellItem(this.actor, seller, itemId, 1, premiumPercent);
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
   }
@@ -407,6 +484,14 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       haggleSkill: getValue("haggleSkill") || "per",
       haggleDC: Number(getValue("haggleDC")) || 10,
       haggleDiscountPercent: Number(getValue("haggleDiscountPercent")) || 0,
+      standingPerPurchase: Number(getValue("standingPerPurchase")) || 0,
+      standingPerVisit: Number(getValue("standingPerVisit")) || 0,
+      standingPerHaggleSuccess: Number(getValue("standingPerHaggleSuccess")) || 0,
+      standingPerHaggleRepeat: Number(getValue("standingPerHaggleRepeat")) || 0,
+      standingFriendlyThreshold: Number(getValue("standingFriendlyThreshold")) || 0,
+      standingFriendlyDiscountPercent: Number(getValue("standingFriendlyDiscountPercent")) || 0,
+      standingCooperativeThreshold: Number(getValue("standingCooperativeThreshold")) || 0,
+      standingCooperativeDiscountPercent: Number(getValue("standingCooperativeDiscountPercent")) || 0,
       flagGoldThreshold: {
         value: Number(getValue("flagGoldThresholdValue")) || 0,
         denomination: getValue("flagGoldThresholdDenomination") || "gp"
