@@ -20,7 +20,9 @@ import {
   STANDING_TIER_RANK,
   resetHaggleAttempts,
   getBannedActorIds,
-  unbanActor
+  unbanActor,
+  getTransactionLog,
+  clearTransactionLog
 } from "./shop-data.js";
 import { restockShop, addManualItem, itemCostCopper } from "./restock.js";
 import { buyItem, sellItem, sellPayoutCopper } from "./transactions.js";
@@ -91,7 +93,8 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       theft: ShopApp.#onTheft,
       acknowledgeFlaggedEvent: ShopApp.#onAcknowledgeFlaggedEvent,
       spawnGuard: ShopApp.#onSpawnGuard,
-      unbanActor: ShopApp.#onUnbanActor
+      unbanActor: ShopApp.#onUnbanActor,
+      clearTransactionLog: ShopApp.#onClearTransactionLog
     }
   };
 
@@ -350,6 +353,16 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
     const guardActors = canManage ? game.actors.filter((a) => a.type === "npc").map((a) => ({ id: a.id, name: a.name })) : [];
 
+    // Newest-first "receipts" for the GM — settles table disputes about
+    // who bought/sold/haggled/stole/ordered what. GM-only, matching every
+    // other management panel here.
+    const transactionLog = canManage
+      ? getTransactionLog(this.actor)
+          .slice()
+          .reverse()
+          .map((e) => ({ ...e, time: new Date(e.timestamp).toLocaleString() }))
+      : [];
+
     return {
       actor: this.actor,
       canManage,
@@ -381,6 +394,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       ],
       allStanding,
       guardActors,
+      transactionLog,
       theftConsequenceModes: THEFT_CONSEQUENCE_MODES,
       patrolActive: !!game.modules.get("patrol")?.active
     };
@@ -701,6 +715,18 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     if (!game.user.isGM) return;
     await unbanActor(this.actor, target.dataset.actorId);
     ui.notifications.info("Ban lifted.");
+    this.render();
+  }
+
+  static async #onClearTransactionLog() {
+    if (!game.user.isGM) return;
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      window: { title: "Clear Transaction Log?" },
+      content: "<p>This permanently deletes this shop's transaction history. Continue?</p>"
+    });
+    if (!confirmed) return;
+    await clearTransactionLog(this.actor);
+    ui.notifications.info("Transaction log cleared.");
     this.render();
   }
 }

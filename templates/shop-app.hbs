@@ -198,6 +198,25 @@
     </table>
   </section>
   {{/if}}
+
+  <section class="vs-pending">
+    <h3>Transaction Log <button type="button" data-action="clearTransactionLog">Clear Log</button></h3>
+    <table>
+      <thead><tr><th>Time</th><th>Player</th><th>Type</th><th>Detail</th></tr></thead>
+      <tbody>
+        {{#each transactionLog}}
+        <tr>
+          <td>{{this.time}}</td>
+          <td>{{this.actorName}}</td>
+          <td>{{this.kind}}</td>
+          <td>{{this.message}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4"><em>No transactions yet.</em></td></tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
   {{/if}}
 
   {{#if canManage}}

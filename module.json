@@ -2,7 +2,7 @@
   "id": "valoria-shops",
   "title": "Valoria Shops",
   "description": "Custom shop system for the Valoria campaign: compendium-sourced stock, per-NPC standing, haggling, theft, and configurable shop services. Built fresh, not adapted from any closed-source shop module.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "compatibility": {
     "minimum": "13",
     "verified": "14"

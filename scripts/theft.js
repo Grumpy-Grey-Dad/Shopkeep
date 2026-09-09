@@ -1,5 +1,5 @@
 import { MODULE_ID } from "./constants.js";
-import { getShopConfig, adjustStanding, getFlaggedEvents, setFlaggedEvents } from "./shop-data.js";
+import { getShopConfig, adjustStanding, getFlaggedEvents, setFlaggedEvents, recordTransaction } from "./shop-data.js";
 import { notifyGMs } from "./notify.js";
 import { applyImmediateConsequence } from "./consequence.js";
 import { markSuspected } from "./patrol-integration.js";
@@ -77,7 +77,9 @@ export async function attemptTheft(shopActor, actorActor, itemId) {
     // is triggered separately from the Flagged Events panel instead.
     await applyImmediateConsequence(shopActor, actorActor);
 
-    return { ok: true, message: `Theft failed (rolled ${roll.total} vs DC ${dc}) — caught!` };
+    const message = `Theft failed (rolled ${roll.total} vs DC ${dc}) — caught!`;
+    await recordTransaction(shopActor, { kind: "Theft", actorId: actorActor.id, actorName: actorActor.name, message: `${actorActor.name}: ${message}` });
+    return { ok: true, message };
   }
 
   const cleanSuccess = roll.total >= dc + 5;
@@ -93,12 +95,11 @@ export async function attemptTheft(shopActor, actorActor, itemId) {
 
   await transferStolenItem(shopActor, actorActor, grantedItem);
 
-  return {
-    ok: true,
-    message: cleanSuccess
-      ? `Theft succeeded — got away with ${grantedItem.name}.`
-      : `Theft succeeded, but grabbed ${grantedItem.name} instead of ${targetItem.name}.`
-  };
+  const message = cleanSuccess
+    ? `Theft succeeded — got away with ${grantedItem.name}.`
+    : `Theft succeeded, but grabbed ${grantedItem.name} instead of ${targetItem.name}.`;
+  await recordTransaction(shopActor, { kind: "Theft", actorId: actorActor.id, actorName: actorActor.name, message: `${actorActor.name}: ${message}` });
+  return { ok: true, message };
 }
 
 export async function acknowledgeFlaggedEvent(shopActor, eventId) {

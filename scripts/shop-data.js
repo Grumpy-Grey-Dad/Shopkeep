@@ -188,6 +188,33 @@ export async function recordHaggleAttempt(actor, playerActorId) {
   return wasFirstThisVisit;
 }
 
+/**
+ * Section 7's Transaction Log — the GM's "receipts" for settling table
+ * disputes about who bought/sold/haggled/stole/ordered what. Hooked at
+ * the shared resolution points (buyItem/sellItem, performHaggle,
+ * attemptTheft, resolveService) so both the instant path and the
+ * GM-approval path (flagged haggle/service requests) log exactly once,
+ * not twice. Reuses each action's own human-readable outcome message
+ * rather than re-deriving one, so the log always matches what the actor
+ * actually saw.
+ */
+const MAX_TRANSACTION_LOG_ENTRIES = 200;
+
+export function getTransactionLog(actor) {
+  return actor?.getFlag(MODULE_ID, "transactionLog") ?? [];
+}
+
+export async function recordTransaction(actor, { kind, actorId, actorName, message }) {
+  const log = getTransactionLog(actor);
+  log.push({ id: foundry.utils.randomID(), timestamp: Date.now(), kind, actorId, actorName, message });
+  if (log.length > MAX_TRANSACTION_LOG_ENTRIES) log.splice(0, log.length - MAX_TRANSACTION_LOG_ENTRIES);
+  await actor.setFlag(MODULE_ID, "transactionLog", log);
+}
+
+export async function clearTransactionLog(actor) {
+  return actor.setFlag(MODULE_ID, "transactionLog", []);
+}
+
 export async function resetHaggleAttempts(actor) {
   // setFlag(..., {}) would NOT clear this — Foundry deep-merges plain
   // object flag values by default, so merging {} onto an existing map

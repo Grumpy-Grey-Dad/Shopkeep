@@ -1,5 +1,5 @@
 import { MODULE_ID, ORIGIN } from "./constants.js";
-import { getShopConfig, adjustStanding, isBanned } from "./shop-data.js";
+import { getShopConfig, adjustStanding, isBanned, recordTransaction } from "./shop-data.js";
 import { itemCostCopper } from "./restock.js";
 import { canAfford, payCost, receivePayment, copperToDisplay } from "./currency.js";
 
@@ -50,7 +50,9 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, disco
     await adjustStanding(shopActor, buyerActor.id, config.standingPerPurchase);
   }
 
-  return { ok: true, message: `${buyerActor.name} bought ${quantity}x ${item.name} for ${copperToDisplay(cost)}.` };
+  const message = `${buyerActor.name} bought ${quantity}x ${item.name} for ${copperToDisplay(cost)}.`;
+  await recordTransaction(shopActor, { kind: "Buy", actorId: buyerActor.id, actorName: buyerActor.name, message });
+  return { ok: true, message };
 }
 
 export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, premiumPercent = 0) {
@@ -93,8 +95,7 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, pre
     await item.update({ "system.quantity": available - quantity });
   }
 
-  return {
-    ok: true,
-    message: `${sellerActor.name} sold ${quantity}x ${item.name} for ${copperToDisplay(payout)}.`
-  };
+  const message = `${sellerActor.name} sold ${quantity}x ${item.name} for ${copperToDisplay(payout)}.`;
+  await recordTransaction(shopActor, { kind: "Sell", actorId: sellerActor.id, actorName: sellerActor.name, message });
+  return { ok: true, message };
 }

@@ -1,4 +1,4 @@
-import { getShopConfig, getPendingRequests, setPendingRequests, getPendingOrders, setPendingOrders } from "./shop-data.js";
+import { getShopConfig, getPendingRequests, setPendingRequests, getPendingOrders, setPendingOrders, recordTransaction } from "./shop-data.js";
 import { toCopper, copperToDisplay, canAfford, payCost, receivePayment } from "./currency.js";
 import { notifyGMs, notifyActorOwner } from "./notify.js";
 
@@ -38,7 +38,9 @@ async function resolveService(shopActor, actorActor, service) {
       await receivePayment(shopActor, cost);
     }
     await table.draw({ displayChat: true });
-    return { ok: true, message: `${actorActor.name} used ${service.name}.` };
+    const message = `${actorActor.name} used ${service.name}.`;
+    await recordTransaction(shopActor, { kind: "Service", actorId: actorActor.id, actorName: actorActor.name, message });
+    return { ok: true, message };
   }
 
   if (!canAfford(actorActor, cost)) {
@@ -54,7 +56,9 @@ async function resolveService(shopActor, actorActor, service) {
       speaker: { alias: shopActor.name },
       content: `<strong>${actorActor.name}</strong> used <strong>${service.name}</strong>.`
     });
-    return { ok: true, message: `${service.name} complete.` };
+    const message = `${service.name} complete.`;
+    await recordTransaction(shopActor, { kind: "Service", actorId: actorActor.id, actorName: actorActor.name, message: `${actorActor.name}: ${message}` });
+    return { ok: true, message };
   }
 
   if (service.resolutionType === "roll") {
@@ -65,7 +69,9 @@ async function resolveService(shopActor, actorActor, service) {
       speaker: { alias: shopActor.name },
       flavor: `${actorActor.name} attempts ${service.name} (DC ${dc}) — ${success ? "Success" : "Failure"}`
     });
-    return { ok: true, message: `${service.name}: ${success ? "success" : "failure"} (rolled ${roll.total} vs DC ${dc}).` };
+    const message = `${service.name}: ${success ? "success" : "failure"} (rolled ${roll.total} vs DC ${dc}).`;
+    await recordTransaction(shopActor, { kind: "Service", actorId: actorActor.id, actorName: actorActor.name, message: `${actorActor.name}: ${message}` });
+    return { ok: true, message };
   }
 
   if (service.resolutionType === "time-delay") {
@@ -84,7 +90,9 @@ async function resolveService(shopActor, actorActor, service) {
       speaker: { alias: shopActor.name },
       content: `<strong>${actorActor.name}</strong> ordered <strong>${service.name}</strong> (ready in ${service.leadTimeDays ?? 1} day(s), GM marks it fulfilled when ready).`
     });
-    return { ok: true, message: `${service.name} ordered — ready in ${service.leadTimeDays ?? 1} day(s).` };
+    const message = `${service.name} ordered — ready in ${service.leadTimeDays ?? 1} day(s).`;
+    await recordTransaction(shopActor, { kind: "Service", actorId: actorActor.id, actorName: actorActor.name, message: `${actorActor.name}: ${message}` });
+    return { ok: true, message };
   }
 
   return { ok: false, message: `Unknown resolution type for ${service.name}.` };
@@ -147,6 +155,12 @@ export async function fulfillOrder(shopActor, orderId) {
   await ChatMessage.create({
     speaker: { alias: shopActor.name },
     content: `<strong>${order.serviceName}</strong> for <strong>${order.actorName}</strong> is ready.`
+  });
+  await recordTransaction(shopActor, {
+    kind: "Service",
+    actorId: order.actorId,
+    actorName: order.actorName,
+    message: `${order.actorName}: ${order.serviceName} order fulfilled.`
   });
   if (actorActor) {
     await notifyActorOwner(

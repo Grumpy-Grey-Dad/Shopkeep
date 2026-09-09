@@ -7,7 +7,8 @@ import {
   recordHaggleAttempt,
   isBanned,
   getStanding,
-  getStandingTier
+  getStandingTier,
+  recordTransaction
 } from "./shop-data.js";
 import { itemCostCopper } from "./restock.js";
 import { toCopper } from "./currency.js";
@@ -59,7 +60,9 @@ async function performHaggle(shopActor, actorActor, item, direction, config) {
   });
 
   if (!success) {
-    return { ok: true, message: `Haggle failed (rolled ${roll.total} vs DC ${dc}) — no discount.` };
+    const message = `Haggle failed (rolled ${roll.total} vs DC ${dc}) — no discount.`;
+    await recordTransaction(shopActor, { kind: "Haggle", actorId: actorActor.id, actorName: actorActor.name, message: `${actorActor.name}: ${message}` });
+    return { ok: true, message };
   }
 
   // The passive demeanor-tier discount stacks additively on top of a
@@ -77,7 +80,12 @@ async function performHaggle(shopActor, actorActor, item, direction, config) {
       : await sellItem(shopActor, actorActor, item.id, 1, totalDiscountPercent);
 
   const verb = direction === "buy" ? "off" : "extra";
-  return { ok: result.ok, message: `Haggle succeeded (${totalDiscountPercent}% ${verb})! ${result.message}` };
+  const message = `Haggle succeeded (${totalDiscountPercent}% ${verb})! ${result.message}`;
+  // Logged regardless of whether the resulting purchase itself went
+  // through — the haggle roll succeeding is its own distinct event from
+  // the sale completing (which, if it does, logs its own Buy/Sell entry).
+  await recordTransaction(shopActor, { kind: "Haggle", actorId: actorActor.id, actorName: actorActor.name, message: `${actorActor.name}: ${message}` });
+  return { ok: result.ok, message };
 }
 
 /** Entry point for a player/GM clicking "Haggle" on a stock or sellable item. */
