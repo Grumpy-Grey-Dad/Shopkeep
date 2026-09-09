@@ -57,6 +57,11 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
   constructor(options = {}) {
     super(options);
     this.actingActorId = game.user.character?.id ?? null;
+    // Pure UI state for the Configuration tab strip — never read by any
+    // game-logic function, only by _prepareContext (to render the right
+    // panel active) and the click handler below (to remember it across
+    // the next full re-render, e.g. after Save Configuration).
+    this.activeConfigTab = "general";
     this.#dragDrop = new DragDrop.implementation({
       dropSelector: ".vs-drop-zone",
       permissions: { drop: () => game.user.isGM },
@@ -158,6 +163,20 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
     this.element.querySelectorAll("[data-stock-tier-item-id]").forEach((el) => {
       el.addEventListener("change", (ev) => this._onStockTierChange(ev));
+    });
+
+    // Configuration tab strip — pure display toggle, no game data involved.
+    // Toggles classes directly rather than re-rendering, so switching tabs
+    // stays instant; this.activeConfigTab is kept in sync purely so a real
+    // re-render later (e.g. after Save Configuration) reopens on the same tab.
+    this.element.querySelectorAll("[data-tab]").forEach((tab) => {
+      tab.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const key = tab.dataset.tab;
+        this.activeConfigTab = key;
+        this.element.querySelectorAll("[data-tab]").forEach((t) => t.classList.toggle("active", t === tab));
+        this.element.querySelectorAll("[data-tab-panel]").forEach((p) => p.classList.toggle("active", p.dataset.tabPanel === key));
+      });
     });
   }
 
@@ -337,15 +356,18 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     // else's. GMs additionally get a full roster to review/adjust.
     const standing = actingActor ? currentStanding : null;
     const standingTierLabel = actingActor ? currentTier.label : null;
+    const standingTierKey = actingActor ? currentTier.key : null;
     const bannedActorIds = getBannedActorIds(this.actor);
     const allStanding = canManage
       ? playerActors.map((a) => {
           const value = getStanding(this.actor, a.id);
+          const tier = getStandingTier(config, value);
           return {
             id: a.id,
             name: a.name,
             value,
-            tierLabel: getStandingTier(config, value).label,
+            tierLabel: tier.label,
+            tierKey: tier.key,
             banned: bannedActorIds.includes(a.id)
           };
         })
@@ -387,6 +409,8 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       currencyDenominations: CURRENCY_DENOMINATIONS,
       standing,
       standingTierLabel,
+      standingTierKey,
+      activeConfigTab: this.activeConfigTab,
       standingTierOptions: [
         { key: "", label: "None" },
         { key: "friendly", label: "Friendly" },

@@ -2,7 +2,7 @@
 <div class="vs-enable">
   <p>This actor is not yet configured as a shop.</p>
   {{#if canManage}}
-  <button type="button" data-action="enable">Make this a Shop</button>
+  <button type="button" data-action="enable"><i class="fa-solid fa-store"></i> Make this a Shop</button>
   {{/if}}
 </div>
 {{else}}
@@ -12,17 +12,19 @@
     <img src="{{actor.img}}" width="48" height="48">
     <div class="vs-summary-text">
       <h2>{{actor.name}}</h2>
-      <p>Gold: {{gold}}</p>
+      <p><i class="fa-solid fa-coins"></i>{{gold}}</p>
     </div>
     {{#if canManage}}
-    <button type="button" data-action="restock">Restock</button>
-    <button type="button" data-action="resetHaggleCounts">Reset Haggle Counts</button>
+    <div class="vs-btn-row">
+      <button type="button" data-action="restock"><i class="fa-solid fa-rotate"></i> Restock</button>
+      <button type="button" data-action="resetHaggleCounts"><i class="fa-solid fa-arrows-rotate"></i> Reset Haggle Counts</button>
+    </div>
     {{/if}}
   </header>
 
   <section class="vs-acting">
     {{#if canManage}}
-    <label>Acting as:
+    <label><i class="fa-solid fa-user"></i> Acting as:
       <select name="actingActor">
         <option value="">-- choose a character --</option>
         {{#each playerActors}}
@@ -31,29 +33,39 @@
       </select>
     </label>
     {{else if actingActor}}
-    <p>Playing as: <strong>{{actingActor.name}}</strong></p>
+    <p><i class="fa-solid fa-user"></i> Playing as: <strong>{{actingActor.name}}</strong></p>
     {{else}}
     <p class="vs-hint">You don't have a character assigned — ask your GM to set one in Player Configuration.</p>
     {{/if}}
     {{#if actingActor}}
-    <p class="vs-hint">Standing with {{actor.name}}: <strong>{{standing}}</strong> ({{standingTierLabel}})</p>
+    <p class="vs-standing-line">Standing with {{actor.name}}: <strong>{{standing}}</strong>
+      <span class="vs-tier-badge tier-{{standingTierKey}}">{{standingTierLabel}}</span>
+    </p>
     {{/if}}
   </section>
 
-  <section class="vs-stock vs-drop-zone">
-    <h3>Stock {{#if canManage}}<span class="vs-hint">(GM: drag an item here to add it manually)</span>{{/if}}</h3>
+  <section class="vs-card vs-stock vs-drop-zone">
+    <div class="vs-card-header">
+      <h3><i class="fa-solid fa-boxes-stacked"></i> Stock</h3>
+      {{#if canManage}}<span class="vs-hint">drag an item here to add it manually</span>{{/if}}
+    </div>
     <table>
-      <thead><tr><th></th><th>Name</th><th>Price</th><th>Qty</th>{{#if canManage}}<th>Origin</th><th>Requires</th>{{/if}}<th></th></tr></thead>
+      <thead><tr><th></th><th>Name</th><th class="vs-col-numeric">Price</th><th class="vs-col-numeric">Qty</th>{{#if canManage}}<th>Origin</th><th>Requires</th>{{/if}}<th></th></tr></thead>
       <tbody>
         {{#each stock}}
         <tr>
-          <td><img src="{{this.img}}" width="24" height="24"></td>
-          <td>
-            {{this.name}} {{#if this.rarity}}<em>({{this.rarity}})</em>{{/if}}
-            {{#if this.requiredTier}}{{#unless ../canManage}}<span class="vs-hint">({{this.requiredTier}} stock)</span>{{/unless}}{{/if}}
+          <td class="vs-item-cell" colspan="2">
+            <img src="{{this.img}}" width="28" height="28">
+            <span class="vs-item-name">
+              <span>
+                {{#if this.rarity}}<span class="vs-rarity rarity-{{this.rarity}}"></span>{{/if}}
+                {{this.name}} {{#if this.rarity}}<em>({{this.rarity}})</em>{{/if}}
+              </span>
+              {{#if this.requiredTier}}{{#unless ../canManage}}<span class="vs-hint">{{this.requiredTier}} stock</span>{{/unless}}{{/if}}
+            </span>
           </td>
-          <td>{{this.price}}</td>
-          <td>{{this.quantity}}</td>
+          <td class="vs-col-numeric">{{this.price}}</td>
+          <td class="vs-col-numeric">{{this.quantity}}</td>
           {{#if ../canManage}}
           <td>{{this.origin}}</td>
           <td>
@@ -62,36 +74,38 @@
               <option value="{{this.key}}" {{#if (eq this.key ../requiredTier)}}selected{{/if}}>{{this.label}}</option>
               {{/each}}
             </select>
-            {{#if this.locked}}<span class="vs-hint">(locked for current player)</span>{{/if}}
+            {{#if this.locked}}<span class="vs-hint">locked for current player</span>{{/if}}
           </td>
           {{/if}}
-          <td>
-            <button type="button" data-action="buy" data-item-id="{{this.id}}">Buy</button>
-            <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="buy">Haggle</button>
-            <button type="button" data-action="theft" data-item-id="{{this.id}}">Steal</button>
-            {{#if ../canManage}}<button type="button" data-action="removeItem" data-item-id="{{this.id}}">Remove</button>{{/if}}
+          <td class="vs-actions">
+            <button type="button" data-action="buy" data-item-id="{{this.id}}" title="Buy"><i class="fa-solid fa-cart-shopping"></i></button>
+            <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="buy" title="Haggle"><i class="fa-solid fa-comments-dollar"></i></button>
+            <button type="button" data-action="theft" data-item-id="{{this.id}}" title="Steal"><i class="fa-solid fa-user-ninja"></i></button>
+            {{#if ../canManage}}<button type="button" class="vs-danger" data-action="removeItem" data-item-id="{{this.id}}" title="Remove"><i class="fa-solid fa-trash"></i></button>{{/if}}
           </td>
         </tr>
         {{else}}
-        <tr><td colspan="7"><em>No stock yet{{#if ../canManage}} — configure and restock below{{/if}}.</em></td></tr>
+        <tr><td colspan="7" class="vs-empty">No stock yet{{#if canManage}} — configure and restock below{{/if}}.</td></tr>
         {{/each}}
       </tbody>
     </table>
   </section>
 
   {{#if sellable.length}}
-  <section class="vs-sell">
-    <h3>Sell to this Shop</h3>
+  <section class="vs-card vs-sell">
+    <div class="vs-card-header"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Sell to this Shop</h3></div>
     <table>
       <tbody>
         {{#each sellable}}
         <tr>
-          <td><img src="{{this.img}}" width="24" height="24"></td>
-          <td>{{this.name}}</td>
-          <td>{{this.price}}</td>
-          <td>
-            <button type="button" data-action="sell" data-item-id="{{this.id}}">Sell</button>
-            <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="sell">Haggle</button>
+          <td class="vs-item-cell">
+            <img src="{{this.img}}" width="28" height="28">
+            <span class="vs-item-name">{{this.name}}</span>
+          </td>
+          <td class="vs-col-numeric">{{this.price}}</td>
+          <td class="vs-actions">
+            <button type="button" data-action="sell" data-item-id="{{this.id}}" title="Sell"><i class="fa-solid fa-hand-holding-dollar"></i></button>
+            <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="sell" title="Haggle"><i class="fa-solid fa-comments-dollar"></i></button>
           </td>
         </tr>
         {{/each}}
@@ -101,15 +115,15 @@
   {{/if}}
 
   {{#if visibleServices.length}}
-  <section class="vs-services">
-    <h3>Services</h3>
+  <section class="vs-card vs-services">
+    <div class="vs-card-header"><h3><i class="fa-solid fa-concierge-bell"></i> Services</h3></div>
     <table>
       <tbody>
         {{#each visibleServices}}
         <tr>
           <td>{{this.name}}{{#if this.needsApproval}} <span class="vs-hint">(needs GM approval)</span>{{/if}}</td>
-          <td>{{this.cost}}</td>
-          <td><button type="button" data-action="useService" data-service-id="{{this.id}}">Use</button></td>
+          <td class="vs-col-numeric">{{this.cost}}</td>
+          <td class="vs-actions"><button type="button" data-action="useService" data-service-id="{{this.id}}"><i class="fa-solid fa-play"></i> Use</button></td>
         </tr>
         {{/each}}
       </tbody>
@@ -119,8 +133,8 @@
 
   {{#if canManage}}
   {{#if pendingRequests.length}}
-  <section class="vs-pending">
-    <h3>Pending Requests</h3>
+  <section class="vs-card vs-pending">
+    <div class="vs-card-header"><h3><i class="fa-solid fa-hourglass-half"></i> Pending Requests</h3></div>
     <table>
       <tbody>
         {{#each pendingRequests}}
@@ -132,9 +146,9 @@
             {{this.actorName}} — {{this.serviceName}} ({{formatCopper this.costCopper}})
             {{/if}}
           </td>
-          <td>
-            <button type="button" data-action="approveRequest" data-request-id="{{this.id}}">Approve</button>
-            <button type="button" data-action="denyRequest" data-request-id="{{this.id}}">Deny</button>
+          <td class="vs-actions">
+            <button type="button" data-action="approveRequest" data-request-id="{{this.id}}" title="Approve"><i class="fa-solid fa-check"></i> Approve</button>
+            <button type="button" class="vs-danger" data-action="denyRequest" data-request-id="{{this.id}}" title="Deny"><i class="fa-solid fa-xmark"></i> Deny</button>
           </td>
         </tr>
         {{/each}}
@@ -144,14 +158,14 @@
   {{/if}}
 
   {{#if pendingOrders.length}}
-  <section class="vs-pending">
-    <h3>Pending Orders</h3>
+  <section class="vs-card vs-pending">
+    <div class="vs-card-header"><h3><i class="fa-solid fa-clock"></i> Pending Orders</h3></div>
     <table>
       <tbody>
         {{#each pendingOrders}}
         <tr>
           <td>{{this.actorName}} — {{this.serviceName}} ({{this.leadTimeDays}} day(s))</td>
-          <td><button type="button" data-action="fulfillOrder" data-order-id="{{this.id}}">Mark Fulfilled</button></td>
+          <td class="vs-actions"><button type="button" data-action="fulfillOrder" data-order-id="{{this.id}}"><i class="fa-solid fa-box-open"></i> Mark Fulfilled</button></td>
         </tr>
         {{/each}}
       </tbody>
@@ -160,8 +174,8 @@
   {{/if}}
 
   {{#if flaggedEvents.length}}
-  <section class="vs-pending">
-    <h3>Flagged Events</h3>
+  <section class="vs-card vs-pending">
+    <div class="vs-card-header"><h3><i class="fa-solid fa-triangle-exclamation"></i> Flagged Events</h3></div>
     <table>
       <tbody>
         {{#each flaggedEvents}}
@@ -170,9 +184,9 @@
             {{this.actorName}} was caught stealing {{this.itemName}} (rolled {{this.rollTotal}} vs DC {{this.dc}}) — narrate the consequence.
             {{#if this.patrolConfirmed}}<br><strong>Confirmed sighting:</strong> {{this.patrolGuardName}} actually spotted them.{{/if}}
           </td>
-          <td>
-            {{#if this.showSpawnGuard}}<button type="button" data-action="spawnGuard" data-actor-id="{{this.actorId}}">Spawn Guard</button>{{/if}}
-            <button type="button" data-action="acknowledgeFlaggedEvent" data-event-id="{{this.id}}">Acknowledge</button>
+          <td class="vs-actions">
+            {{#if this.showSpawnGuard}}<button type="button" data-action="spawnGuard" data-actor-id="{{this.actorId}}"><i class="fa-solid fa-shield-halved"></i> Spawn Guard</button>{{/if}}
+            <button type="button" data-action="acknowledgeFlaggedEvent" data-event-id="{{this.id}}"><i class="fa-solid fa-check-double"></i> Acknowledge</button>
           </td>
         </tr>
         {{/each}}
@@ -182,16 +196,17 @@
   {{/if}}
 
   {{#if allStanding.length}}
-  <section class="vs-pending">
-    <h3>Standing</h3>
+  <section class="vs-card vs-pending">
+    <div class="vs-card-header"><h3><i class="fa-solid fa-handshake"></i> Standing</h3></div>
     <table>
+      <thead><tr><th>Player</th><th class="vs-col-numeric">Standing</th><th>Demeanor</th><th></th></tr></thead>
       <tbody>
         {{#each allStanding}}
         <tr>
           <td>{{this.name}}{{#if this.banned}} <span class="vs-hint">(banned)</span>{{/if}}</td>
-          <td><input type="number" step="0.25" data-standing-actor-id="{{this.id}}" value="{{this.value}}" style="width:4em"></td>
-          <td>{{this.tierLabel}}</td>
-          <td>{{#if this.banned}}<button type="button" data-action="unbanActor" data-actor-id="{{this.id}}">Lift Ban</button>{{/if}}</td>
+          <td class="vs-col-numeric"><input type="number" step="0.25" data-standing-actor-id="{{this.id}}" value="{{this.value}}" style="width:4em"></td>
+          <td><span class="vs-tier-badge tier-{{this.tierKey}}">{{this.tierLabel}}</span></td>
+          <td class="vs-actions">{{#if this.banned}}<button type="button" data-action="unbanActor" data-actor-id="{{this.id}}"><i class="fa-solid fa-unlock"></i> Lift Ban</button>{{/if}}</td>
         </tr>
         {{/each}}
       </tbody>
@@ -199,8 +214,11 @@
   </section>
   {{/if}}
 
-  <section class="vs-pending">
-    <h3>Transaction Log <button type="button" data-action="clearTransactionLog">Clear Log</button></h3>
+  <section class="vs-card vs-pending">
+    <div class="vs-card-header">
+      <h3><i class="fa-solid fa-receipt"></i> Transaction Log</h3>
+      <button type="button" data-action="clearTransactionLog"><i class="fa-solid fa-broom"></i> Clear Log</button>
+    </div>
     <table>
       <thead><tr><th>Time</th><th>Player</th><th>Type</th><th>Detail</th></tr></thead>
       <tbody>
@@ -212,7 +230,7 @@
           <td>{{this.message}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="4"><em>No transactions yet.</em></td></tr>
+        <tr><td colspan="4" class="vs-empty">No transactions yet.</td></tr>
         {{/each}}
       </tbody>
     </table>
@@ -220,181 +238,220 @@
   {{/if}}
 
   {{#if canManage}}
-  <section class="vs-config">
-    <h3>Configuration</h3>
+  <section class="vs-card vs-config">
+    <div class="vs-card-header"><h3><i class="fa-solid fa-sliders"></i> Configuration</h3></div>
 
-    <fieldset>
-      <legend>Shop Type &amp; Services</legend>
-      <label>Shop Type
-        <select name="shopType">
-          <option value="">-- none / custom --</option>
-          {{#each shopTypes}}
-          <option value="{{this}}" {{#if (eq this ../config.shopType)}}selected{{/if}}>{{this}}</option>
+    <nav class="vs-config-tabs">
+      <a class="vs-config-tab {{#if (eq activeConfigTab "general")}}active{{/if}}" data-tab="general"><i class="fa-solid fa-store"></i> General</a>
+      <a class="vs-config-tab {{#if (eq activeConfigTab "economy")}}active{{/if}}" data-tab="economy"><i class="fa-solid fa-coins"></i> Economy</a>
+      <a class="vs-config-tab {{#if (eq activeConfigTab "standing")}}active{{/if}}" data-tab="standing"><i class="fa-solid fa-handshake"></i> Standing</a>
+      <a class="vs-config-tab {{#if (eq activeConfigTab "haggling")}}active{{/if}}" data-tab="haggling"><i class="fa-solid fa-comments-dollar"></i> Haggling</a>
+      <a class="vs-config-tab {{#if (eq activeConfigTab "theft")}}active{{/if}}" data-tab="theft"><i class="fa-solid fa-user-secret"></i> Theft</a>
+    </nav>
+
+    <div class="vs-config-panel {{#if (eq activeConfigTab "general")}}active{{/if}}" data-tab-panel="general">
+
+      <fieldset>
+        <legend><i class="fa-solid fa-store"></i> Shop Type &amp; Services</legend>
+        <label>Shop Type
+          <select name="shopType">
+            <option value="">-- none / custom --</option>
+            {{#each shopTypes}}
+            <option value="{{this}}" {{#if (eq this ../config.shopType)}}selected{{/if}}>{{this}}</option>
+            {{/each}}
+          </select>
+        </label>
+        <label class="vs-check"><input type="checkbox" name="typeLock" {{#if config.typeLock}}checked{{/if}}> Lock this shop to its type's service list</label>
+        <p><button type="button" data-action="loadSuggestedServices"><i class="fa-solid fa-list-check"></i> Load Suggested Services for Type</button></p>
+
+        <table class="vs-service-editor">
+          <thead>
+            <tr><th>On</th><th>Name</th><th>Type</th><th>Cost</th><th>DC</th><th>Lead (days)</th><th>Tables</th><th>Flag</th><th></th></tr>
+          </thead>
+          <tbody>
+            {{#each services}}
+            <tr>
+              <td><input type="checkbox" data-service-field="enabled" data-service-id="{{this.id}}" {{#if this.enabled}}checked{{/if}}></td>
+              <td><input type="text" data-service-field="name" data-service-id="{{this.id}}" value="{{this.name}}"></td>
+              <td>
+                <select data-service-field="resolutionType" data-service-id="{{this.id}}">
+                  <option value="instant" {{#if (eq this.resolutionType "instant")}}selected{{/if}}>Instant</option>
+                  <option value="roll" {{#if (eq this.resolutionType "roll")}}selected{{/if}}>Roll</option>
+                  <option value="time-delay" {{#if (eq this.resolutionType "time-delay")}}selected{{/if}}>Time-Delay</option>
+                  <option value="rolltable" {{#if (eq this.resolutionType "rolltable")}}selected{{/if}}>Roll Table</option>
+                </select>
+              </td>
+              <td>
+                <input type="number" data-service-field="cost.value" data-service-id="{{this.id}}" value="{{this.cost.value}}" style="width:3.5em">
+                <select data-service-field="cost.denomination" data-service-id="{{this.id}}">
+                  {{#each ../currencyDenominations}}
+                  <option value="{{this}}" {{#if (eq this ../cost.denomination)}}selected{{/if}}>{{this}}</option>
+                  {{/each}}
+                </select>
+              </td>
+              <td><input type="number" data-service-field="dc" data-service-id="{{this.id}}" value="{{this.dc}}" style="width:3em"></td>
+              <td><input type="number" data-service-field="leadTimeDays" data-service-id="{{this.id}}" value="{{this.leadTimeDays}}" style="width:3em"></td>
+              <td>
+                <select multiple data-service-field="rollTableIds" data-service-id="{{this.id}}" style="min-width:8em">
+                  {{#each ../worldTables}}
+                  <option value="{{this.id}}" {{#if (includes ../rollTableIds this.id)}}selected{{/if}}>{{this.name}}</option>
+                  {{/each}}
+                </select>
+              </td>
+              <td><input type="checkbox" data-service-field="alwaysFlag" data-service-id="{{this.id}}" {{#if this.alwaysFlag}}checked{{/if}}></td>
+              <td><button type="button" class="vs-danger" data-action="removeService" data-service-id="{{this.id}}" title="Remove"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>
+            {{else}}
+            <tr><td colspan="9" class="vs-empty">No services yet.</td></tr>
+            {{/each}}
+          </tbody>
+        </table>
+        <button type="button" data-action="addService"><i class="fa-solid fa-plus"></i> Add Service</button>
+      </fieldset>
+
+      <fieldset class="vs-compendium-list">
+        <legend><i class="fa-solid fa-box-archive"></i> Source Compendiums</legend>
+        {{#each packs}}
+        <label class="vs-check"><input type="checkbox" name="compendiums" value="{{this.id}}" {{#if this.checked}}checked{{/if}}> {{this.label}} <span class="vs-hint">— {{this.source}}</span></label>
+        {{/each}}
+      </fieldset>
+
+      <fieldset>
+        <legend><i class="fa-solid fa-filter"></i> Filters</legend>
+        <p><strong>Item Types</strong><br>
+          {{#each itemTypes}}
+          <label class="vs-check"><input type="checkbox" name="filterTypes" value="{{this}}" {{#if (includes ../config.filters.types this)}}checked{{/if}}> {{this}}</label>
           {{/each}}
-        </select>
-      </label>
-      <label class="vs-check"><input type="checkbox" name="typeLock" {{#if config.typeLock}}checked{{/if}}> Lock this shop to its type's service list</label>
-      <p><button type="button" data-action="loadSuggestedServices">Load Suggested Services for Type</button></p>
-
-      <table class="vs-service-editor">
-        <thead>
-          <tr><th>On</th><th>Name</th><th>Type</th><th>Cost</th><th>DC</th><th>Lead (days)</th><th>Tables</th><th>Flag</th><th></th></tr>
-        </thead>
-        <tbody>
-          {{#each services}}
-          <tr>
-            <td><input type="checkbox" data-service-field="enabled" data-service-id="{{this.id}}" {{#if this.enabled}}checked{{/if}}></td>
-            <td><input type="text" data-service-field="name" data-service-id="{{this.id}}" value="{{this.name}}"></td>
-            <td>
-              <select data-service-field="resolutionType" data-service-id="{{this.id}}">
-                <option value="instant" {{#if (eq this.resolutionType "instant")}}selected{{/if}}>Instant</option>
-                <option value="roll" {{#if (eq this.resolutionType "roll")}}selected{{/if}}>Roll</option>
-                <option value="time-delay" {{#if (eq this.resolutionType "time-delay")}}selected{{/if}}>Time-Delay</option>
-                <option value="rolltable" {{#if (eq this.resolutionType "rolltable")}}selected{{/if}}>Roll Table</option>
-              </select>
-            </td>
-            <td>
-              <input type="number" data-service-field="cost.value" data-service-id="{{this.id}}" value="{{this.cost.value}}" style="width:3.5em">
-              <select data-service-field="cost.denomination" data-service-id="{{this.id}}">
-                {{#each ../currencyDenominations}}
-                <option value="{{this}}" {{#if (eq this ../cost.denomination)}}selected{{/if}}>{{this}}</option>
-                {{/each}}
-              </select>
-            </td>
-            <td><input type="number" data-service-field="dc" data-service-id="{{this.id}}" value="{{this.dc}}" style="width:3em"></td>
-            <td><input type="number" data-service-field="leadTimeDays" data-service-id="{{this.id}}" value="{{this.leadTimeDays}}" style="width:3em"></td>
-            <td>
-              <select multiple data-service-field="rollTableIds" data-service-id="{{this.id}}" style="min-width:8em">
-                {{#each ../worldTables}}
-                <option value="{{this.id}}" {{#if (includes ../rollTableIds this.id)}}selected{{/if}}>{{this.name}}</option>
-                {{/each}}
-              </select>
-            </td>
-            <td><input type="checkbox" data-service-field="alwaysFlag" data-service-id="{{this.id}}" {{#if this.alwaysFlag}}checked{{/if}}></td>
-            <td><button type="button" data-action="removeService" data-service-id="{{this.id}}">Remove</button></td>
-          </tr>
-          {{else}}
-          <tr><td colspan="9"><em>No services yet.</em></td></tr>
+        </p>
+        <p><strong>Rarities</strong><br>
+          {{#each rarities}}
+          <label class="vs-check"><input type="checkbox" name="filterRarities" value="{{this}}" {{#if (includes ../config.filters.rarities this)}}checked{{/if}}> {{#if this}}{{this}}{{else}}None / Mundane{{/if}}</label>
           {{/each}}
-        </tbody>
-      </table>
-      <button type="button" data-action="addService">Add Service</button>
-    </fieldset>
+        </p>
+        <div class="vs-config-row">
+          <label>Include keywords (comma-separated)<input type="text" name="includeKeywords" value="{{config.filters.includeKeywords}}"></label>
+          <label>Exclude keywords (comma-separated)<input type="text" name="excludeKeywords" value="{{config.filters.excludeKeywords}}"></label>
+        </div>
+      </fieldset>
 
-    <fieldset class="vs-compendium-list">
-      <legend>Source Compendiums</legend>
-      {{#each packs}}
-      <label class="vs-check"><input type="checkbox" name="compendiums" value="{{this.id}}" {{#if this.checked}}checked{{/if}}> {{this.label}} <span class="vs-hint">— {{this.source}}</span></label>
-      {{/each}}
-    </fieldset>
-
-    <fieldset>
-      <legend>Filters</legend>
-      <p><strong>Item Types</strong><br>
+      <fieldset>
+        <legend><i class="fa-solid fa-hand-holding-dollar"></i> Buy List</legend>
+        <p class="vs-hint">Item types this shop purchases from players.</p>
         {{#each itemTypes}}
-        <label class="vs-check"><input type="checkbox" name="filterTypes" value="{{this}}" {{#if (includes ../config.filters.types this)}}checked{{/if}}> {{this}}</label>
+        <label class="vs-check"><input type="checkbox" name="buyList" value="{{this}}" {{#if (includes ../config.buyList this)}}checked{{/if}}> {{this}}</label>
         {{/each}}
-      </p>
-      <p><strong>Rarities</strong><br>
-        {{#each rarities}}
-        <label class="vs-check"><input type="checkbox" name="filterRarities" value="{{this}}" {{#if (includes ../config.filters.rarities this)}}checked{{/if}}> {{#if this}}{{this}}{{else}}None / Mundane{{/if}}</label>
-        {{/each}}
-      </p>
-      <label>Include keywords (comma-separated)<input type="text" name="includeKeywords" value="{{config.filters.includeKeywords}}"></label>
-      <label>Exclude keywords (comma-separated)<input type="text" name="excludeKeywords" value="{{config.filters.excludeKeywords}}"></label>
-    </fieldset>
+      </fieldset>
 
-    <fieldset>
-      <legend>Economy</legend>
-      <label>Starting Gold (gp)<input type="number" name="startingGold" value="{{config.startingGold}}"></label>
-      <label>Target Stock Count<input type="number" name="targetStockCount" value="{{config.targetStockCount}}"></label>
-      <label>Max Qty per Item<input type="number" name="maxQuantityPerItem" value="{{config.maxQuantityPerItem}}"></label>
-      <label>Sell-back % (what the shop pays for player-sold goods)<input type="number" name="sellBackPercent" value="{{config.sellBackPercent}}"></label>
-    </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>Standing &amp; Reputation</legend>
-      <label>Standing per ordinary purchase<input type="number" step="0.25" name="standingPerPurchase" value="{{config.standingPerPurchase}}"></label>
-      <label>Standing per visit (first time a player opens this shop's window)<input type="number" step="0.25" name="standingPerVisit" value="{{config.standingPerVisit}}"></label>
-      <label>Standing per successful haggle<input type="number" step="0.25" name="standingPerHaggleSuccess" value="{{config.standingPerHaggleSuccess}}"></label>
-      <label>Standing per repeat haggle attempt (same visit, win or lose)<input type="number" step="0.25" name="standingPerHaggleRepeat" value="{{config.standingPerHaggleRepeat}}"></label>
-      <p class="vs-hint">At or above these thresholds, the merchant's demeanor and prices shift automatically — even without haggling. The tier discount also stacks on top of a successful haggle's own discount.</p>
-      <label>Friendly threshold<input type="number" name="standingFriendlyThreshold" value="{{config.standingFriendlyThreshold}}" style="width:4em"></label>
-      <label>Friendly discount %<input type="number" name="standingFriendlyDiscountPercent" value="{{config.standingFriendlyDiscountPercent}}" style="width:4em"></label>
-      <label>Cooperative threshold<input type="number" name="standingCooperativeThreshold" value="{{config.standingCooperativeThreshold}}" style="width:4em"></label>
-      <label>Cooperative discount %<input type="number" name="standingCooperativeDiscountPercent" value="{{config.standingCooperativeDiscountPercent}}" style="width:4em"></label>
-    </fieldset>
+    <div class="vs-config-panel {{#if (eq activeConfigTab "economy")}}active{{/if}}" data-tab-panel="economy">
+      <fieldset>
+        <legend><i class="fa-solid fa-coins"></i> Economy</legend>
+        <div class="vs-config-row">
+          <label>Starting Gold (gp)<input type="number" name="startingGold" value="{{config.startingGold}}"></label>
+          <label>Target Stock Count<input type="number" name="targetStockCount" value="{{config.targetStockCount}}"></label>
+          <label>Max Qty per Item<input type="number" name="maxQuantityPerItem" value="{{config.maxQuantityPerItem}}"></label>
+          <label>Sell-back % (what the shop pays for player-sold goods)<input type="number" name="sellBackPercent" value="{{config.sellBackPercent}}"></label>
+        </div>
+      </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>Haggling</legend>
-      <label>Skill Rolled
-        <select name="haggleSkill">
-          {{#each haggleSkills}}
-          <option value="{{this.key}}" {{#if (eq this.key ../config.haggleSkill)}}selected{{/if}}>{{this.label}}</option>
-          {{/each}}
-        </select>
-      </label>
-      <label>DC<input type="number" name="haggleDC" value="{{config.haggleDC}}"></label>
-      <label>Discount/Premium % on success<input type="number" name="haggleDiscountPercent" value="{{config.haggleDiscountPercent}}"></label>
-      <label>Flag threshold (above this listed value, haggling needs GM approval)
-        <input type="number" name="flagGoldThresholdValue" value="{{config.flagGoldThreshold.value}}" style="width:5em">
-        <select name="flagGoldThresholdDenomination">
-          {{#each currencyDenominations}}
-          <option value="{{this}}" {{#if (eq this ../config.flagGoldThreshold.denomination)}}selected{{/if}}>{{this}}</option>
-          {{/each}}
-        </select>
-      </label>
-      <p class="vs-hint">Items of rare rarity or better always need GM approval to haggle over, regardless of value.</p>
-    </fieldset>
+    <div class="vs-config-panel {{#if (eq activeConfigTab "standing")}}active{{/if}}" data-tab-panel="standing">
+      <fieldset>
+        <legend><i class="fa-solid fa-handshake"></i> Standing &amp; Reputation</legend>
+        <div class="vs-config-row">
+          <label>Standing per ordinary purchase<input type="number" step="0.25" name="standingPerPurchase" value="{{config.standingPerPurchase}}"></label>
+          <label>Standing per visit (first time a player opens this shop's window)<input type="number" step="0.25" name="standingPerVisit" value="{{config.standingPerVisit}}"></label>
+        </div>
+        <div class="vs-config-row">
+          <label>Standing per successful haggle<input type="number" step="0.25" name="standingPerHaggleSuccess" value="{{config.standingPerHaggleSuccess}}"></label>
+          <label>Standing per repeat haggle attempt (same visit, win or lose)<input type="number" step="0.25" name="standingPerHaggleRepeat" value="{{config.standingPerHaggleRepeat}}"></label>
+        </div>
+        <p class="vs-hint">At or above these thresholds, the merchant's demeanor and prices shift automatically — even without haggling. The tier discount also stacks on top of a successful haggle's own discount.</p>
+        <div class="vs-config-row">
+          <label>Friendly threshold<input type="number" name="standingFriendlyThreshold" value="{{config.standingFriendlyThreshold}}"></label>
+          <label>Friendly discount %<input type="number" name="standingFriendlyDiscountPercent" value="{{config.standingFriendlyDiscountPercent}}"></label>
+        </div>
+        <div class="vs-config-row">
+          <label>Cooperative threshold<input type="number" name="standingCooperativeThreshold" value="{{config.standingCooperativeThreshold}}"></label>
+          <label>Cooperative discount %<input type="number" name="standingCooperativeDiscountPercent" value="{{config.standingCooperativeDiscountPercent}}"></label>
+        </div>
+      </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>Theft</legend>
-      <label>Skill Rolled
-        <select name="theftSkill">
-          {{#each haggleSkills}}
-          <option value="{{this.key}}" {{#if (eq this.key ../config.theftSkill)}}selected{{/if}}>{{this.label}}</option>
-          {{/each}}
-        </select>
-      </label>
-      <label>DC<input type="number" name="theftDC" value="{{config.theftDC}}"></label>
-      <label>Standing penalty on a failed attempt<input type="number" name="standingPerFailedTheft" value="{{config.standingPerFailedTheft}}"></label>
-      <p class="vs-hint">Meeting the DC grabs a random stock item; beating it by 5+ gets the item actually targeted. Only a failed attempt is flagged for GM review — success is never noticed.</p>
-    </fieldset>
+    <div class="vs-config-panel {{#if (eq activeConfigTab "haggling")}}active{{/if}}" data-tab-panel="haggling">
+      <fieldset>
+        <legend><i class="fa-solid fa-comments-dollar"></i> Haggling</legend>
+        <div class="vs-config-row">
+          <label>Skill Rolled
+            <select name="haggleSkill">
+              {{#each haggleSkills}}
+              <option value="{{this.key}}" {{#if (eq this.key ../config.haggleSkill)}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>DC<input type="number" name="haggleDC" value="{{config.haggleDC}}"></label>
+          <label>Discount/Premium % on success<input type="number" name="haggleDiscountPercent" value="{{config.haggleDiscountPercent}}"></label>
+        </div>
+        <label>Flag threshold (above this listed value, haggling needs GM approval)
+          <input type="number" name="flagGoldThresholdValue" value="{{config.flagGoldThreshold.value}}" style="width:5em">
+          <select name="flagGoldThresholdDenomination">
+            {{#each currencyDenominations}}
+            <option value="{{this}}" {{#if (eq this ../config.flagGoldThreshold.denomination)}}selected{{/if}}>{{this}}</option>
+            {{/each}}
+          </select>
+        </label>
+        <p class="vs-hint">Items of rare rarity or better always need GM approval to haggle over, regardless of value.</p>
+      </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>Theft Consequence (on a failed attempt)</legend>
-      <label>Mode
-        <select name="theftConsequenceMode">
-          {{#each theftConsequenceModes}}
-          <option value="{{this.key}}" {{#if (eq this.key ../config.theftConsequenceMode)}}selected{{/if}}>{{this.label}}</option>
-          {{/each}}
-        </select>
-      </label>
-      <label>Guard actor to spawn (used only in Guard mode)
-        <select name="guardActorId">
-          <option value="">-- none --</option>
-          {{#each guardActors}}
-          <option value="{{this.id}}" {{#if (eq this.id ../config.guardActorId)}}selected{{/if}}>{{this.name}}</option>
-          {{/each}}
-        </select>
-      </label>
-      <label>Standing floor on Hostile mode<input type="number" name="hostileStandingFloor" value="{{config.hostileStandingFloor}}"></label>
-      <p class="vs-hint">Merchant/Hostile modes apply automatically the instant a theft fails. Guard mode instead adds a "Spawn Guard" button to the matching Flagged Event — you place the token and start combat when you're ready; running the fight itself is on you.</p>
-      <label>Patrol "suspected" window (seconds)<input type="number" name="suspectedWindowSeconds" value="{{config.suspectedWindowSeconds}}"></label>
-      <p class="vs-hint">
-        Optional integration with the free Patrol module. If a caught thief is spotted by a patrol route within this window of fleeing, the Flagged Event above is upgraded to a confirmed sighting instead of a rumor.
-        {{#if patrolActive}}<strong>Patrol is active in this world.</strong>{{else}}Patrol isn't installed/active — this setting has no effect right now.{{/if}}
-      </p>
-    </fieldset>
+    <div class="vs-config-panel {{#if (eq activeConfigTab "theft")}}active{{/if}}" data-tab-panel="theft">
+      <fieldset>
+        <legend><i class="fa-solid fa-user-secret"></i> Theft</legend>
+        <div class="vs-config-row">
+          <label>Skill Rolled
+            <select name="theftSkill">
+              {{#each haggleSkills}}
+              <option value="{{this.key}}" {{#if (eq this.key ../config.theftSkill)}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>DC<input type="number" name="theftDC" value="{{config.theftDC}}"></label>
+          <label>Standing penalty on a failed attempt<input type="number" name="standingPerFailedTheft" value="{{config.standingPerFailedTheft}}"></label>
+        </div>
+        <p class="vs-hint">Meeting the DC grabs a random stock item; beating it by 5+ gets the item actually targeted. Only a failed attempt is flagged for GM review — success is never noticed.</p>
+      </fieldset>
 
-    <fieldset>
-      <legend>Buy List (item types this shop purchases from players)</legend>
-      {{#each itemTypes}}
-      <label class="vs-check"><input type="checkbox" name="buyList" value="{{this}}" {{#if (includes ../config.buyList this)}}checked{{/if}}> {{this}}</label>
-      {{/each}}
-    </fieldset>
+      <fieldset>
+        <legend><i class="fa-solid fa-shield-halved"></i> Theft Consequence (on a failed attempt)</legend>
+        <div class="vs-config-row">
+          <label>Mode
+            <select name="theftConsequenceMode">
+              {{#each theftConsequenceModes}}
+              <option value="{{this.key}}" {{#if (eq this.key ../config.theftConsequenceMode)}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>Guard actor to spawn (used only in Guard mode)
+            <select name="guardActorId">
+              <option value="">-- none --</option>
+              {{#each guardActors}}
+              <option value="{{this.id}}" {{#if (eq this.id ../config.guardActorId)}}selected{{/if}}>{{this.name}}</option>
+              {{/each}}
+            </select>
+          </label>
+          <label>Standing floor on Hostile mode<input type="number" name="hostileStandingFloor" value="{{config.hostileStandingFloor}}"></label>
+        </div>
+        <p class="vs-hint">Merchant/Hostile modes apply automatically the instant a theft fails. Guard mode instead adds a "Spawn Guard" button to the matching Flagged Event — you place the token and start combat when you're ready; running the fight itself is on you.</p>
+        <label>Patrol "suspected" window (seconds)<input type="number" name="suspectedWindowSeconds" value="{{config.suspectedWindowSeconds}}"></label>
+        <p class="vs-hint">
+          Optional integration with the free Patrol module. If a caught thief is spotted by a patrol route within this window of fleeing, the Flagged Event above is upgraded to a confirmed sighting instead of a rumor.
+          {{#if patrolActive}}<strong>Patrol is active in this world.</strong>{{else}}Patrol isn't installed/active — this setting has no effect right now.{{/if}}
+        </p>
+      </fieldset>
+    </div>
 
-    <button type="button" data-action="saveConfig">Save Configuration</button>
+    <p><button type="button" data-action="saveConfig"><i class="fa-solid fa-floppy-disk"></i> Save Configuration</button></p>
   </section>
   {{/if}}
 
