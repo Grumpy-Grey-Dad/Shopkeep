@@ -36,7 +36,7 @@
       "name": "Tom"
     }
   ],
-  "url": "",
-  "manifest": "",
-  "download": ""
+  "url": "https://github.com/Grumpy-Grey-Dad/Shopkeep",
+  "manifest": "https://raw.githubusercontent.com/Grumpy-Grey-Dad/Shopkeep/main/module.json",
+  "download": "https://github.com/Grumpy-Grey-Dad/Shopkeep/archive/refs/heads/main.zip"
 }
