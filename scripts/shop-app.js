@@ -32,6 +32,7 @@ import { attemptTheft, acknowledgeFlaggedEvent } from "./theft.js";
 import { spawnGuard } from "./consequence.js";
 import { approveRequest, denyRequest } from "./requests.js";
 import { copperToDisplay, actorTotalCopper } from "./currency.js";
+import { runShopAction } from "./socket-relay.js";
 
 const { HandlebarsApplicationMixin, DocumentSheetV2 } = foundry.applications.api;
 const { DragDrop, TextEditor } = foundry.applications.ux;
@@ -135,9 +136,17 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     // some reason — safer to under-grant (at most once ever) than to leave
     // the visit bump farmable.
     const sessionId = game.socket?.session?.sessionId ?? game.socket?.id ?? game.user.id;
-    const isNewVisit = await recordVisitSession(this.actor, actingActor.id, sessionId);
-    if (!isNewVisit) return;
-    await adjustStanding(this.actor, actingActor.id, config.standingPerVisit);
+    const result = await runShopAction(
+      this.actor,
+      "visit",
+      { shopActorId: this.actor.id, actorActorId: actingActor.id, sessionId, standingPerVisit: config.standingPerVisit },
+      async () => {
+        const isNewVisit = await recordVisitSession(this.actor, actingActor.id, sessionId);
+        if (isNewVisit) await adjustStanding(this.actor, actingActor.id, config.standingPerVisit);
+        return { ok: true, isNewVisit };
+      }
+    );
+    if (!result.ok || !result.isNewVisit) return;
     this.render();
   }
 
@@ -467,7 +476,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     }
     const config = getShopConfig(this.actor);
     const discountPercent = getStandingTier(config, getStanding(this.actor, buyer.id)).discountPercent;
-    const result = await buyItem(this.actor, buyer, itemId, 1, discountPercent);
+    const result = await runShopAction(
+      this.actor,
+      "buy",
+      { shopActorId: this.actor.id, buyerActorId: buyer.id, itemId, quantity: 1, discountPercent, awardPurchaseStanding: true },
+      () => buyItem(this.actor, buyer, itemId, 1, discountPercent)
+    );
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
   }
@@ -493,7 +507,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
     const config = getShopConfig(this.actor);
     const premiumPercent = getStandingTier(config, getStanding(this.actor, seller.id)).discountPercent;
-    const result = await sellItem(this.actor, seller, itemId, 1, premiumPercent);
+    const result = await runShopAction(
+      this.actor,
+      "sell",
+      { shopActorId: this.actor.id, sellerActorId: seller.id, itemId, quantity: 1, premiumPercent },
+      () => sellItem(this.actor, seller, itemId, 1, premiumPercent)
+    );
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
   }
@@ -567,7 +586,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
           : "You don't have a character assigned — ask your GM to set one in Player Configuration."
       );
     }
-    const result = await useService(this.actor, actorActor, serviceId);
+    const result = await runShopAction(
+      this.actor,
+      "useService",
+      { shopActorId: this.actor.id, actorActorId: actorActor.id, serviceId },
+      () => useService(this.actor, actorActor, serviceId)
+    );
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
   }
@@ -693,7 +717,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
           : "You don't have a character assigned — ask your GM to set one in Player Configuration."
       );
     }
-    const result = await attemptHaggle(this.actor, actorActor, itemId, direction);
+    const result = await runShopAction(
+      this.actor,
+      "haggle",
+      { shopActorId: this.actor.id, actorActorId: actorActor.id, itemId, direction },
+      () => attemptHaggle(this.actor, actorActor, itemId, direction)
+    );
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
   }
@@ -715,7 +744,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
           : "You don't have a character assigned — ask your GM to set one in Player Configuration."
       );
     }
-    const result = await attemptTheft(this.actor, actorActor, itemId);
+    const result = await runShopAction(
+      this.actor,
+      "theft",
+      { shopActorId: this.actor.id, actorActorId: actorActor.id, itemId },
+      () => attemptTheft(this.actor, actorActor, itemId)
+    );
     ui.notifications[result.ok ? "info" : "warn"](result.message);
     if (result.ok) this.render();
   }

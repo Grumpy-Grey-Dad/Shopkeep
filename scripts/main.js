@@ -2,6 +2,7 @@ import { MODULE_ID } from "./constants.js";
 import { ShopApp } from "./shop-app.js";
 import { copperToDisplay } from "./currency.js";
 import { registerPatrolIntegration } from "./patrol-integration.js";
+import { initSocketRelay } from "./socket-relay.js";
 
 Hooks.once("init", () => {
   console.log(`${MODULE_ID} | Initializing`);
@@ -29,6 +30,7 @@ Hooks.once("init", () => {
 // live: a push during "init" was gone by the time theft.js needed it).
 Hooks.once("ready", () => {
   registerPatrolIntegration();
+  initSocketRelay();
 });
 
 /**
