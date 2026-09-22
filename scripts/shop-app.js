@@ -80,6 +80,19 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     id: "valoria-shop-app-{id}",
     window: { icon: "fa-solid fa-store", resizable: true },
     position: { width: 720, height: 780 },
+    // DocumentSheetV2 hard-disables every button/input on the sheet
+    // (form.elements[*].disabled = true, via _toggleDisabled) whenever
+    // isEditable is false, which defaults to requiring OWNER permission.
+    // That's the whole problem the socket relay exists to route around —
+    // a player never has Owner on the shop actor — so it has to be
+    // lowered here too, or every action button stays greyed out and
+    // unclickable regardless of what the relay can do. Limited is the
+    // level a player actually holds (see shop-data.js/main.js sheet
+    // registration); real write authorization still happens per-action
+    // via runShopAction's isGM/isOwner check in socket-relay.js, not via
+    // this framework-level gate — this only controls whether the button
+    // is clickable, not whether the write is allowed to happen directly.
+    editPermission: CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED,
     actions: {
       enable: ShopApp.#onEnable,
       restock: ShopApp.#onRestock,
