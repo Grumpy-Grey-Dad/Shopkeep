@@ -1,23 +1,15 @@
 import { MODULE_ID, ORIGIN } from "./constants.js";
 import { getShopConfig, setShopGold } from "./shop-data.js";
 import { toCopper } from "./currency.js";
+import { passesKeywords } from "./keywords.js";
 
-function matchesFilters(item, filters) {
+function matchesFilters(item, filters, keywordMatch) {
   if (filters.types?.length && !filters.types.includes(item.type)) return false;
 
   const rarity = item.system?.rarity || "";
   if (filters.rarities?.length && !filters.rarities.includes(rarity)) return false;
 
-  const name = item.name.toLowerCase();
-  const include = (filters.includeKeywords || "")
-    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  const exclude = (filters.excludeKeywords || "")
-    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-
-  if (include.length && !include.some((kw) => name.includes(kw))) return false;
-  if (exclude.length && exclude.some((kw) => name.includes(kw))) return false;
-
-  return true;
+  return passesKeywords(item.name, filters.includeKeywords, filters.excludeKeywords, keywordMatch);
 }
 
 /** Pull the current candidate pool from every compendium configured on the shop. */
@@ -28,7 +20,12 @@ export async function getFilteredPool(config) {
     if (!pack) continue;
     const docs = await pack.getDocuments();
     for (const doc of docs) {
-      if (matchesFilters(doc, config.filters)) pool.push(doc);
+      // F3 (0.6.0): pack contents (the Tinderbox inside Explorer's Pack)
+      // would shelve with a link to a container that isn't there, and a
+      // 0-price item would be free to buy. Both skipped unless turned off.
+      if (config.skipContainedItems !== false && doc.system?.container) continue;
+      if (config.skipZeroPriceItems !== false && itemCostCopper(doc) <= 0) continue;
+      if (matchesFilters(doc, config.filters, config.keywordMatch)) pool.push(doc);
     }
   }
   return pool;

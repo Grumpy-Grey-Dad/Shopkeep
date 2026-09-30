@@ -1,5 +1,6 @@
 import { MODULE_ID, ORIGIN } from "./constants.js";
 import { itemCostCopper } from "./restock.js";
+import { passesKeywords } from "./keywords.js";
 
 /*
  * What a shop will trade — one place, so the stock list, the Sell list and
@@ -35,6 +36,18 @@ export function isQuestItem(item) {
 }
 
 export const NOT_BUYABLE_REASON = "Not something a shop will buy.";
+export const OUT_OF_TRADE_REASON = "Not something this shop deals in.";
+
+/** F2 (0.6.0): is `item` in this shop's trade? Item type must be on the
+ *  Buy List; a loot item must also have one of the ticked loot sub-types
+ *  (if any are ticked); and every item must pass the Buy List keywords
+ *  (if any are set). The Sell list only lists items that pass. */
+export function isInTrade(item, config) {
+  if (!config.buyList?.length || !config.buyList.includes(item.type)) return false;
+  if (item.type === "loot" && config.buyLootTypes?.length
+    && !config.buyLootTypes.includes(item.system?.type?.value || "")) return false;
+  return passesKeywords(item.name, config.buyIncludeKeywords, config.buyExcludeKeywords, config.keywordMatch);
+}
 
 /** Why this shop won't buy `item` from a player, or null if it will.
  *  Used by the Sell list (which hides the button and shows the reason) and
@@ -43,6 +56,7 @@ export function sellBlockReason(item, config) {
   if (!config.buyList?.length || !config.buyList.includes(item.type)) {
     return `This shop doesn't buy ${item.type} items.`;
   }
+  if (!isInTrade(item, config)) return OUT_OF_TRADE_REASON;
   if (isQuestItem(item) || itemCostCopper(item) <= 0) return NOT_BUYABLE_REASON;
   return null;
 }

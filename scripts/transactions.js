@@ -11,6 +11,15 @@ export function sellPayoutCopper(item, quantity, config) {
   return Math.round((itemCostCopper(item) * quantity * percent) / 100);
 }
 
+/** F1 (0.6.0): what a buyer actually pays, in whole copper — the shop's
+ *  price level plus any discounts (standing tier, haggle), added together
+ *  as percentages of the item's book price. Shared by the stock list and
+ *  the real charge so they can't drift. Never below 0. */
+export function buyPriceCopper(item, quantity, config, discountPercent = 0) {
+  const percent = Math.max(0, 100 + (Number(config.priceModifierPercent) || 0) - discountPercent);
+  return Math.round((itemCostCopper(item) * quantity * percent) / 100);
+}
+
 export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, discountPercent = 0, awardPurchaseStanding = true) {
   if (isBanned(shopActor, buyerActor.id)) {
     return { ok: false, message: `${shopActor.name} refuses to deal with ${buyerActor.name}.` };
@@ -24,7 +33,7 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, disco
   const available = item.system.quantity ?? 0;
   if (quantity > available) return { ok: false, message: `Only ${available} in stock.` };
 
-  const cost = Math.round((itemCostCopper(item) * quantity * (100 - discountPercent)) / 100);
+  const cost = buyPriceCopper(item, quantity, getShopConfig(shopActor), discountPercent);
   if (!canAfford(buyerActor, cost)) {
     return { ok: false, message: `${buyerActor.name} can't afford this (needs ${copperToDisplay(cost)}).` };
   }

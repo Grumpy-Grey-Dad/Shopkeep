@@ -18,6 +18,22 @@ export const DEFAULT_SHOP_CONFIG = {
   startingGold: 0,
   currentGold: 0,
   buyList: [],
+  // F2 (0.6.0): narrow the Buy List by trade. Loot sub-types (dnd5e's
+  // system.type.value) only restrict loot; the keywords restrict every type.
+  // Empty = no restriction, which is how every pre-0.6.0 shop behaves.
+  buyLootTypes: [],
+  buyIncludeKeywords: "",
+  buyExcludeKeywords: "",
+  // F3 (0.6.0): "substring" (the original behaviour) or "word"; used by the
+  // Restock keywords and the Buy List keywords alike.
+  keywordMatch: "substring",
+  // F3 (0.6.0): Restock skips pack contents (items inside another item)
+  // and items priced at 0. On by default; untick to allow them.
+  skipContainedItems: true,
+  skipZeroPriceItems: true,
+  // F1 (0.6.0): shop price level, e.g. +40 (dear) or -25 (cheap). Standing
+  // and haggle discounts stack on top, additively.
+  priceModifierPercent: 0,
   targetStockCount: 10,
   maxQuantityPerItem: 3,
   sellBackPercent: 50,

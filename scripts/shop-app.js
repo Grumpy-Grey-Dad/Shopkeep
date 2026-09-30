@@ -24,13 +24,13 @@ import {
   getTransactionLog,
   clearTransactionLog
 } from "./shop-data.js";
-import { restockShop, addManualItem, itemCostCopper } from "./restock.js";
-import { buyItem, sellItem, sellPayoutCopper } from "./transactions.js";
+import { restockShop, addManualItem } from "./restock.js";
+import { buyItem, sellItem, sellPayoutCopper, buyPriceCopper } from "./transactions.js";
 import { useService, fulfillOrder, serviceCostCopper } from "./services.js";
 import { attemptHaggle } from "./haggle.js";
 import { attemptTheft, acknowledgeFlaggedEvent } from "./theft.js";
 import { spawnGuard } from "./consequence.js";
-import { isShopStock, sellBlockReason } from "./trade-rules.js";
+import { isShopStock, sellBlockReason, isInTrade } from "./trade-rules.js";
 import { approveRequest, denyRequest } from "./requests.js";
 import { copperToDisplay, actorTotalCopper } from "./currency.js";
 import { runShopAction } from "./socket-relay.js";
@@ -271,13 +271,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     const currentStanding = actingActor ? getStanding(this.actor, actingActor.id) : 0;
     const currentTier = getStandingTier(config, currentStanding);
 
-    // Shown price already reflects the acting player's own passive tier
-    // discount (if any) — otherwise a Friendly/Cooperative customer would
-    // see a listed price that's simply wrong for what they're about to
-    // pay, since that discount applies automatically without them having
-    // to haggle for it.
-    const tierDiscountedCopper = (baseCopper) =>
-      Math.round((baseCopper * (100 - currentTier.discountPercent)) / 100);
+    // Shown prices already reflect the acting player's own passive tier
+    // discount/premium (if any) — otherwise a Friendly/Cooperative customer
+    // would see a listed price that's simply wrong for what they're about
+    // to pay, since that applies automatically without them having to
+    // haggle for it. (Buy prices: buyPriceCopper below, which also adds the
+    // shop's price level.)
     const tierPremiumCopper = (baseCopper) =>
       Math.round((baseCopper * (100 + currentTier.discountPercent)) / 100);
 
@@ -293,7 +292,8 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
           id: i.id,
           name: i.name,
           img: i.img,
-          price: copperToDisplay(tierDiscountedCopper(itemCostCopper(i))),
+          // F1 (0.6.0): same function as the real charge (price level + tier).
+          price: copperToDisplay(buyPriceCopper(i, 1, config, currentTier.discountPercent)),
           quantity: i.system.quantity ?? 0,
           rarity: i.system.rarity || "",
           origin: i.getFlag(MODULE_ID, "origin") || "unknown",
@@ -314,7 +314,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
         // M1 (0.5.4): of those, quest items and zero-value items stay in
         // the list with no Sell/Haggle buttons and the plain reason shown,
         // using the same check the sale itself uses (sellBlockReason).
-        if (config.buyList.includes(i.type)) {
+        // F2 (0.6.0): "deals in" now also means the loot sub-types and
+        // Buy List keywords (isInTrade); out-of-trade items aren't listed.
+        if (isInTrade(i, config)) {
           const blockedReason = sellBlockReason(i, config);
           sellable.push({
             id: i.id,
@@ -335,6 +337,9 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     // not "non-magical." Exposing blank as its own checkbox stops that
     // mislabeling from silently filtering a mundane-goods shop to zero.
     const rarities = ["", ...Object.keys(CONFIG.DND5E?.itemRarity ?? {})];
+    // F2 (0.6.0): dnd5e's loot sub-types (art, gear, gem, junk, material…).
+    const lootTypes = Object.entries(CONFIG.DND5E?.lootTypes ?? {})
+      .map(([key, v]) => ({ key, label: game.i18n.localize(v?.label ?? v ?? key) }));
 
     const packs = canManage
       ? game.packs
@@ -429,6 +434,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       notForSaleCount,
       itemTypes,
       rarities,
+      lootTypes,
       packs,
       playerActors,
       actingActorId: this.actingActorId,
@@ -563,6 +569,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     await setShopConfig(this.actor, {
       compendiums: getChecked("compendiums"),
       buyList: getChecked("buyList"),
+      buyLootTypes: getChecked("buyLootTypes"),
+      buyIncludeKeywords: getValue("buyIncludeKeywords"),
+      buyExcludeKeywords: getValue("buyExcludeKeywords"),
+      keywordMatch: getValue("keywordMatch") === "word" ? "word" : "substring",
+      skipContainedItems: form.querySelector('[name="skipContainedItems"]')?.checked ?? true,
+      skipZeroPriceItems: form.querySelector('[name="skipZeroPriceItems"]')?.checked ?? true,
       filters: {
         types: getChecked("filterTypes"),
         rarities: getChecked("filterRarities"),
@@ -573,6 +585,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       targetStockCount: Number(getValue("targetStockCount")) || 0,
       maxQuantityPerItem: Number(getValue("maxQuantityPerItem")) || 1,
       sellBackPercent: Number(getValue("sellBackPercent")) || 50,
+      priceModifierPercent: Number(getValue("priceModifierPercent")) || 0,
       shopType: getValue("shopType"),
       typeLock: form.querySelector('[name="typeLock"]')?.checked ?? false,
       haggleSkill: getValue("haggleSkill") || "per",

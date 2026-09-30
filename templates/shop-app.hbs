@@ -336,6 +336,17 @@
           <label>Include keywords (comma-separated)<input type="text" name="includeKeywords" value="{{config.filters.includeKeywords}}"></label>
           <label>Exclude keywords (comma-separated)<input type="text" name="excludeKeywords" value="{{config.filters.excludeKeywords}}"></label>
         </div>
+        <div class="vs-config-row">
+          <label>Keyword matching (Filters and Buy List)
+            <select name="keywordMatch">
+              <option value="substring" {{#if (eq config.keywordMatch "substring")}}selected{{/if}}>Anywhere in the name</option>
+              <option value="word" {{#if (eq config.keywordMatch "word")}}selected{{/if}}>Whole words only</option>
+            </select>
+          </label>
+        </div>
+        <p class="vs-hint">Whole words: "arrow" no longer matches "Arrow-Catching Shield", but "oil" still matches "Oil of Taggit". Plurals are separate words ("arrows").</p>
+        <label class="vs-check"><input type="checkbox" name="skipContainedItems" {{#if config.skipContainedItems}}checked{{/if}}> Restock skips items packed inside another item (the Tinderbox in Explorer's Pack)</label>
+        <label class="vs-check"><input type="checkbox" name="skipZeroPriceItems" {{#if config.skipZeroPriceItems}}checked{{/if}}> Restock skips items priced at 0</label>
       </fieldset>
 
       <fieldset>
@@ -344,6 +355,16 @@
         {{#each itemTypes}}
         <label class="vs-check"><input type="checkbox" name="buyList" value="{{this}}" {{#if (includes ../config.buyList this)}}checked{{/if}}> {{this}}</label>
         {{/each}}
+        <p><strong>Loot sub-types</strong> <span class="vs-hint">(only if loot is ticked; none ticked = any loot)</span><br>
+          {{#each lootTypes}}
+          <label class="vs-check"><input type="checkbox" name="buyLootTypes" value="{{this.key}}" {{#if (includes ../config.buyLootTypes this.key)}}checked{{/if}}> {{this.label}}</label>
+          {{/each}}
+        </p>
+        <p class="vs-hint">Keywords narrow every item type above, using the keyword matching set under Filters. Blank = no restriction.</p>
+        <div class="vs-config-row">
+          <label>Buy only names with (comma-separated)<input type="text" name="buyIncludeKeywords" value="{{config.buyIncludeKeywords}}"></label>
+          <label>Never buy names with (comma-separated)<input type="text" name="buyExcludeKeywords" value="{{config.buyExcludeKeywords}}"></label>
+        </div>
       </fieldset>
 
     </div>
@@ -356,6 +377,7 @@
           <label>Target Stock Count<input type="number" name="targetStockCount" value="{{config.targetStockCount}}"></label>
           <label>Max Qty per Item<input type="number" name="maxQuantityPerItem" value="{{config.maxQuantityPerItem}}"></label>
           <label>Sell-back % (what the shop pays for player-sold goods)<input type="number" name="sellBackPercent" value="{{config.sellBackPercent}}"></label>
+          <label>Price level % (+40 = dear, -25 = cheap; 0 = book price)<input type="number" name="priceModifierPercent" value="{{config.priceModifierPercent}}"></label>
         </div>
       </fieldset>
     </div>
