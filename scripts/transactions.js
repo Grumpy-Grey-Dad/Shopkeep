@@ -2,6 +2,7 @@ import { MODULE_ID, ORIGIN } from "./constants.js";
 import { getShopConfig, adjustStanding, isBanned, recordTransaction } from "./shop-data.js";
 import { itemCostCopper } from "./restock.js";
 import { canAfford, payCost, receivePayment, copperToDisplay } from "./currency.js";
+import { isShopStock, NOT_FOR_SALE_MESSAGE, sellBlockReason } from "./trade-rules.js";
 
 /** What the shop actually pays for a player-sold item, in whole copper —
  *  shared by the display and the real transaction so they can't drift. */
@@ -16,6 +17,9 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, disco
   }
   const item = shopActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item no longer in stock." };
+  // S1: the shopkeeper's own gear/statblock items are never sold, even if
+  // a request names one directly (e.g. a crafted relay call).
+  if (!isShopStock(item)) return { ok: false, message: NOT_FOR_SALE_MESSAGE };
 
   const available = item.system.quantity ?? 0;
   if (quantity > available) return { ok: false, message: `Only ${available} in stock.` };
@@ -63,9 +67,10 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, pre
   const item = sellerActor.items.get(itemId);
   if (!item) return { ok: false, message: "Item not found on seller." };
 
-  if (!config.buyList.length || !config.buyList.includes(item.type)) {
-    return { ok: false, message: `This shop doesn't buy ${item.type} items.` };
-  }
+  // M1: buy list, zero-value items and quest items: the same check the
+  // Sell list uses, so hiding the button can't be bypassed.
+  const blocked = sellBlockReason(item, config);
+  if (blocked) return { ok: false, message: blocked };
 
   const available = item.system.quantity ?? 1;
   if (quantity > available) return { ok: false, message: `Seller only has ${available}.` };

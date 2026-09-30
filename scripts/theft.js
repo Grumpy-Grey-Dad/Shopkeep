@@ -3,6 +3,7 @@ import { getShopConfig, adjustStanding, getFlaggedEvents, setFlaggedEvents, reco
 import { notifyGMs } from "./notify.js";
 import { applyImmediateConsequence } from "./consequence.js";
 import { markSuspected } from "./patrol-integration.js";
+import { isShopStock, getShopStock, NOT_FOR_SALE_MESSAGE } from "./trade-rules.js";
 
 function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
@@ -31,6 +32,8 @@ export async function attemptTheft(shopActor, actorActor, itemId) {
   if (!actorActor) return { ok: false, message: "No acting character." };
   const targetItem = shopActor.items.get(itemId);
   if (!targetItem) return { ok: false, message: "Item no longer in stock." };
+  // S1: only shop stock can be targeted, never the shopkeeper's own gear.
+  if (!isShopStock(targetItem)) return { ok: false, message: NOT_FOR_SALE_MESSAGE };
 
   const config = getShopConfig(shopActor);
   const rolls = await actorActor.rollSkill({ skill: config.theftSkill }, { configure: false }, { create: false });
@@ -83,7 +86,9 @@ export async function attemptTheft(shopActor, actorActor, itemId) {
   }
 
   const cleanSuccess = roll.total >= dc + 5;
-  const stock = shopActor.items.contents;
+  // S1: the "grabbed something else in the panic" pick comes from shop
+  // stock only, never the shopkeeper's own gear.
+  const stock = getShopStock(shopActor);
   const grantedItem = cleanSuccess ? targetItem : (pickRandom(stock) ?? targetItem);
 
   await roll.toMessage({

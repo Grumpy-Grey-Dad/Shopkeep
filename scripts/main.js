@@ -3,6 +3,7 @@ import { ShopApp } from "./shop-app.js";
 import { copperToDisplay } from "./currency.js";
 import { registerPatrolIntegration } from "./patrol-integration.js";
 import { initSocketRelay } from "./socket-relay.js";
+import { QUEST_ITEM_FLAG, isQuestItem } from "./trade-rules.js";
 
 Hooks.once("init", () => {
   console.log(`${MODULE_ID} | Initializing`);
@@ -47,4 +48,35 @@ Hooks.on("getHeaderControlsNPCActorSheet", (app, controls) => {
     action: "valoriaOpenShop",
     visible: game.user.isGM
   });
+});
+
+/**
+ * M1 (0.5.4): GM-only "Quest item (can't be sold)" checkbox on every item
+ * sheet. Ticking it sets flags.valoria-shops.questItem, and no shop will
+ * buy the item (see trade-rules.js). Zero-value items are already refused
+ * without it; this is for quest items that carry a price. Players never
+ * see the control.
+ */
+Hooks.on("renderItemSheet5e", (app, element) => {
+  if (!game.user.isGM) return;
+  const item = app.document;
+  const root = element instanceof HTMLElement ? element : element?.[0];
+  if (!item || !root) return;
+  root.querySelector(".vs-quest-toggle")?.remove();
+  const host = root.querySelector(".sheet-header .identity-info") ?? root.querySelector(".sheet-header");
+  if (!host) return;
+  const label = document.createElement("label");
+  label.className = "vs-quest-toggle";
+  label.title = "Valoria Shops: no shop will buy this item (GM only)";
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  box.checked = isQuestItem(item);
+  box.disabled = !app.isEditable;
+  box.addEventListener("change", async (event) => {
+    event.stopPropagation();
+    if (event.currentTarget.checked) await item.setFlag(MODULE_ID, QUEST_ITEM_FLAG, true);
+    else await item.unsetFlag(MODULE_ID, QUEST_ITEM_FLAG);
+  });
+  label.append(box, document.createTextNode(" Quest item (can't be sold)"));
+  host.append(label);
 });

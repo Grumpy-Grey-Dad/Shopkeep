@@ -47,7 +47,7 @@
   <section class="vs-card vs-stock vs-drop-zone">
     <div class="vs-card-header">
       <h3><i class="fa-solid fa-boxes-stacked"></i> Stock</h3>
-      {{#if canManage}}<span class="vs-hint">drag an item here to add it manually</span>{{/if}}
+      {{#if canManage}}<span class="vs-hint">drag an item here to add it manually{{#if notForSaleCount}} · {{notForSaleCount}} of the NPC's own item(s) not for sale (stock goes on through Restock or drag-to-add, never the actor's inventory){{/if}}</span>{{/if}}
     </div>
     <table>
       <thead><tr><th></th><th>Name</th><th class="vs-col-numeric">Price</th><th class="vs-col-numeric">Qty</th>{{#if canManage}}<th>Origin</th><th>Requires</th>{{/if}}<th></th></tr></thead>
@@ -104,8 +104,12 @@
           </td>
           <td class="vs-col-numeric">{{this.price}}</td>
           <td class="vs-actions">
+            {{#if this.blocked}}
+            <span class="vs-hint vs-not-buyable" title="{{this.blockedReason}}"><i class="fa-solid fa-ban"></i> {{this.blockedReason}}</span>
+            {{else}}
             <button type="button" data-action="sell" data-item-id="{{this.id}}" title="Sell"><i class="fa-solid fa-hand-holding-dollar"></i></button>
             <button type="button" data-action="haggle" data-item-id="{{this.id}}" data-direction="sell" title="Haggle"><i class="fa-solid fa-comments-dollar"></i></button>
+            {{/if}}
           </td>
         </tr>
         {{/each}}

@@ -13,6 +13,7 @@ import {
 import { itemCostCopper } from "./restock.js";
 import { toCopper } from "./currency.js";
 import { buyItem, sellItem } from "./transactions.js";
+import { isShopStock, NOT_FOR_SALE_MESSAGE, sellBlockReason } from "./trade-rules.js";
 import { notifyGMs } from "./notify.js";
 
 /** Section 6's value-based flagging rule: above a GM-set gold threshold
@@ -97,6 +98,13 @@ export async function attemptHaggle(shopActor, actorActor, itemId, direction) {
   const config = getShopConfig(shopActor);
   const item = findItem(shopActor, actorActor, direction, itemId);
   if (!item) return { ok: false, message: "Item not found." };
+  // S1 / M1: refuse before any roll, standing change or GM request, so
+  // haggling can't be used to reach something that isn't tradeable.
+  if (direction === "buy" && !isShopStock(item)) return { ok: false, message: NOT_FOR_SALE_MESSAGE };
+  if (direction === "sell") {
+    const blocked = sellBlockReason(item, config);
+    if (blocked) return { ok: false, message: blocked };
+  }
 
   if (isFlagged(item, config)) {
     const requests = getPendingRequests(shopActor);

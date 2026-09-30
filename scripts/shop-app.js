@@ -30,6 +30,7 @@ import { useService, fulfillOrder, serviceCostCopper } from "./services.js";
 import { attemptHaggle } from "./haggle.js";
 import { attemptTheft, acknowledgeFlaggedEvent } from "./theft.js";
 import { spawnGuard } from "./consequence.js";
+import { isShopStock, sellBlockReason } from "./trade-rules.js";
 import { approveRequest, denyRequest } from "./requests.js";
 import { copperToDisplay, actorTotalCopper } from "./currency.js";
 import { runShopAction } from "./socket-relay.js";
@@ -280,7 +281,12 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     const tierPremiumCopper = (baseCopper) =>
       Math.round((baseCopper * (100 + currentTier.discountPercent)) / 100);
 
+    // S1 (0.5.4): only items the module put on the shelf are stock; the
+    // shopkeeper's own statblock/gear stays off the list (and buyItem /
+    // haggle / theft refuse it too). The GM sees a count of what's hidden.
+    const notForSaleCount = this.actor.items.filter((i) => !isShopStock(i)).length;
     const stock = this.actor.items.contents
+      .filter(isShopStock)
       .map((i) => {
         const requiredTier = i.getFlag(MODULE_ID, "requiredTier") || "";
         return {
@@ -304,13 +310,20 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
     const sellable = [];
     if (actingActor) {
       for (const i of actingActor.items) {
+        // Only item types this shop deals in are listed at all (as before).
+        // M1 (0.5.4): of those, quest items and zero-value items stay in
+        // the list with no Sell/Haggle buttons and the plain reason shown,
+        // using the same check the sale itself uses (sellBlockReason).
         if (config.buyList.includes(i.type)) {
+          const blockedReason = sellBlockReason(i, config);
           sellable.push({
             id: i.id,
             name: i.name,
             img: i.img,
-            price: copperToDisplay(tierPremiumCopper(sellPayoutCopper(i, 1, config))),
-            quantity: i.system.quantity ?? 1
+            price: blockedReason ? "—" : copperToDisplay(tierPremiumCopper(sellPayoutCopper(i, 1, config))),
+            quantity: i.system.quantity ?? 1,
+            blocked: !!blockedReason,
+            blockedReason
           });
         }
       }
@@ -413,6 +426,7 @@ export class ShopApp extends HandlebarsApplicationMixin(DocumentSheetV2) {
       config,
       gold: copperToDisplay(actorTotalCopper(this.actor)),
       stock,
+      notForSaleCount,
       itemTypes,
       rarities,
       packs,
