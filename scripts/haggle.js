@@ -80,8 +80,24 @@ async function performHaggle(shopActor, actorActor, item, direction, config) {
       ? await buyItem(shopActor, actorActor, item.id, 1, totalDiscountPercent, false)
       : await sellItem(shopActor, actorActor, item.id, 1, totalDiscountPercent);
 
-  const verb = direction === "buy" ? "off" : "extra";
-  const message = `Haggle succeeded (${totalDiscountPercent}% ${verb})! ${result.message}`;
+  // G2 (0.6.1): state the net figure as a % of book price, so a +40% shop's
+  // "25% off" can't read as 25% off the listed price.
+  const pct = (n) => `${Math.round(n * 10) / 10}%`;
+  const signed = (n) => `${n > 0 ? "+" : n < 0 ? "-" : ""}${Math.abs(Math.round(n * 10) / 10)}%`;
+  let detail = "";
+  if (result.ok && result.bookCopper > 0) {
+    const net = (result.copper * 100) / result.bookCopper;
+    if (direction === "buy") {
+      const level = Number(config.priceModifierPercent) || 0;
+      const why = result.floored
+        ? "the shop won't sell below what it pays for it"
+        : [level ? `price level ${signed(level)}` : "", `discounts ${signed(-totalDiscountPercent)}`].filter(Boolean).join(", ");
+      detail = ` You pay ${pct(net)} of book price (${why}).`;
+    } else {
+      detail = ` The shop pays ${pct(net)} of book price (sell-back ${pct(config.sellBackPercent ?? 50)}, bonuses ${signed(totalDiscountPercent)}).`;
+    }
+  }
+  const message = `Haggle succeeded!${detail} ${result.message}`;
   // Logged regardless of whether the resulting purchase itself went
   // through — the haggle roll succeeding is its own distinct event from
   // the sale completing (which, if it does, logs its own Buy/Sell entry).

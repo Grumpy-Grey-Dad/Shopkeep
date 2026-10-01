@@ -11,13 +11,42 @@ export function sellPayoutCopper(item, quantity, config) {
   return Math.round((itemCostCopper(item) * quantity * percent) / 100);
 }
 
-/** F1 (0.6.0): what a buyer actually pays, in whole copper — the shop's
- *  price level plus any discounts (standing tier, haggle), added together
- *  as percentages of the item's book price. Shared by the stock list and
- *  the real charge so they can't drift. Never below 0. */
-export function buyPriceCopper(item, quantity, config, discountPercent = 0) {
+/** What the shop pays for a player-sold item with a bonus on top (the
+ *  seller's standing tier, plus a winning sell-haggle's discount %). The
+ *  real sale and the 0.6.1 price guard both use this, so they can't drift. */
+export function sellPayoutWithPremiumCopper(item, quantity, config, premiumPercent = 0) {
+  return Math.round((sellPayoutCopper(item, quantity, config) * (100 + premiumPercent)) / 100);
+}
+
+/** G1 (0.6.1): the most this shop could ever pay anyone for this item —
+ *  its sell-back plus the best standing-tier bonus plus a winning
+ *  sell-haggle. Best tier rather than the buyer's own, so buying at low
+ *  standing and selling back after climbing can't profit either. */
+export function bestPayoutCopper(item, quantity, config) {
+  const bestTier = Math.max(0, Number(config.standingFriendlyDiscountPercent) || 0, Number(config.standingCooperativeDiscountPercent) || 0);
+  const haggle = Math.max(0, Number(config.haggleDiscountPercent) || 0);
+  return sellPayoutWithPremiumCopper(item, quantity, config, bestTier + haggle);
+}
+
+/** F1 (0.6.0) + G1 (0.6.1): what a buyer actually pays, in whole copper.
+ *  The shop's price level plus any discounts (standing tier, haggle), added
+ *  together as percentages of the item's book price, never below 0. Then
+ *  the guard: if this shop would buy the item back, the price is never
+ *  below the most it could pay for it, so buying and selling back can't
+ *  make money. Shared by the stock list and the real charge.
+ *  Returns { copper, percent (the level/discount sum), floored }. */
+export function buyPriceDetail(item, quantity, config, discountPercent = 0) {
   const percent = Math.max(0, 100 + (Number(config.priceModifierPercent) || 0) - discountPercent);
-  return Math.round((itemCostCopper(item) * quantity * percent) / 100);
+  const listed = Math.round((itemCostCopper(item) * quantity * percent) / 100);
+  if (sellBlockReason(item, config) === null) {
+    const floor = bestPayoutCopper(item, quantity, config);
+    if (floor > listed) return { copper: floor, percent, floored: true };
+  }
+  return { copper: listed, percent, floored: false };
+}
+
+export function buyPriceCopper(item, quantity, config, discountPercent = 0) {
+  return buyPriceDetail(item, quantity, config, discountPercent).copper;
 }
 
 export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, discountPercent = 0, awardPurchaseStanding = true) {
@@ -33,7 +62,8 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, disco
   const available = item.system.quantity ?? 0;
   if (quantity > available) return { ok: false, message: `Only ${available} in stock.` };
 
-  const cost = buyPriceCopper(item, quantity, getShopConfig(shopActor), discountPercent);
+  const price = buyPriceDetail(item, quantity, getShopConfig(shopActor), discountPercent);
+  const cost = price.copper;
   if (!canAfford(buyerActor, cost)) {
     return { ok: false, message: `${buyerActor.name} can't afford this (needs ${copperToDisplay(cost)}).` };
   }
@@ -65,7 +95,8 @@ export async function buyItem(shopActor, buyerActor, itemId, quantity = 1, disco
 
   const message = `${buyerActor.name} bought ${quantity}x ${item.name} for ${copperToDisplay(cost)}.`;
   await recordTransaction(shopActor, { kind: "Buy", actorId: buyerActor.id, actorName: buyerActor.name, message });
-  return { ok: true, message };
+  // G2 (0.6.1): the haggle message reports the net figure from these.
+  return { ok: true, message, copper: cost, bookCopper: itemCostCopper(item) * quantity, percent: price.percent, floored: price.floored };
 }
 
 export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, premiumPercent = 0) {
@@ -88,7 +119,7 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, pre
   // Not in the original spec — added here as a sensible default, flagged
   // as an open tuning value (sellBackPercent, defaults 50). A successful
   // sell-haggle adds premiumPercent on top of that base payout.
-  const payout = Math.round((sellPayoutCopper(item, quantity, config) * (100 + premiumPercent)) / 100);
+  const payout = sellPayoutWithPremiumCopper(item, quantity, config, premiumPercent);
 
   if (!canAfford(shopActor, payout)) {
     return { ok: false, message: "This shop can't afford to buy that right now." };
@@ -111,5 +142,5 @@ export async function sellItem(shopActor, sellerActor, itemId, quantity = 1, pre
 
   const message = `${sellerActor.name} sold ${quantity}x ${item.name} for ${copperToDisplay(payout)}.`;
   await recordTransaction(shopActor, { kind: "Sell", actorId: sellerActor.id, actorName: sellerActor.name, message });
-  return { ok: true, message };
+  return { ok: true, message, copper: payout, bookCopper: itemCostCopper(item) * quantity };
 }

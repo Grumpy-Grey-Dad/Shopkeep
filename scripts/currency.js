@@ -9,6 +9,9 @@
  */
 
 const DENOMINATIONS = ["pp", "gp", "ep", "sp", "cp"];
+// G3 (0.6.1): prices are shown without electrum ("5 sp", not "1 ep").
+// Display only: DENOMINATIONS above still counts electrum a player holds.
+const DISPLAY_DENOMINATIONS = ["pp", "gp", "sp", "cp"];
 
 function conversion(denomination) {
   return CONFIG.DND5E.currencies[denomination]?.conversion ?? 1;
@@ -29,7 +32,7 @@ export function copperToDisplay(totalCopper) {
   let remaining = Math.round(totalCopper ?? 0);
   if (!remaining) return "0 gp";
   const parts = [];
-  for (const denom of DENOMINATIONS) {
+  for (const denom of DISPLAY_DENOMINATIONS) {
     const perUnit = copperPerUnit(denom);
     const count = Math.floor(remaining / perUnit + 1e-9);
     if (count > 0) {
